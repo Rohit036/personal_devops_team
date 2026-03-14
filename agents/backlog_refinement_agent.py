@@ -138,8 +138,8 @@ class BacklogRefinementAgent(BaseDevOpsAgent):
         )
         # Strip optional markdown code fences that some models add
         cleaned = raw_response.strip()
-        if cleaned.startswith("```"):
+        if cleaned.startswith("```") and "\n" in cleaned:
             cleaned = cleaned.split("\n", 1)[-1]
-            cleaned = cleaned.rsplit("```", 1)[0]
+            cleaned = cleaned.rsplit("```", 1)[0].strip()
 
         return json.loads(cleaned)

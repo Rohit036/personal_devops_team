@@ -27,8 +27,8 @@ class AzureOpenAIClient:
         temperature: float = 0.7,
     ):
         self.llm = AzureChatOpenAI(
-            azure_endpoint=endpoint or os.getenv("AZURE_OPENAI_ENDPOINT", ""),
-            api_key=api_key or os.getenv("AZURE_OPENAI_API_KEY", ""),
+            azure_endpoint=endpoint or os.getenv("AZURE_OPENAI_ENDPOINT") or None,
+            api_key=api_key or os.getenv("AZURE_OPENAI_API_KEY") or None,
             azure_deployment=deployment_name or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
             api_version=api_version or os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
             temperature=temperature,

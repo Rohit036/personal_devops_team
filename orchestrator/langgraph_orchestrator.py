@@ -62,7 +62,11 @@ class DevOpsAgentState(TypedDict):
 
     # --- outputs ---
     messages: Annotated[List[str], operator.add]
-    """Append-only log of messages produced by each node."""
+    """Append-only log of messages produced by each node.
+
+    LangGraph uses the ``operator.add`` reducer so that each node's messages
+    are appended to the list rather than replacing it.
+    """
 
     code_review_result: Optional[Dict[str, Any]]
     backlog_result: Optional[Dict[str, Any]]
@@ -79,14 +83,15 @@ def _run_code_review_node(state: DevOpsAgentState) -> DevOpsAgentState:
     """Invoke the CodeReviewAgent and store its result in the shared state."""
     from agents.code_review_agent import CodeReviewAgent, CodeReviewConfig
 
-    pr_number = state.get("pr_number") or 0
+    pr_number = state.get("pr_number")
+    pr_number_int = int(pr_number) if pr_number is not None else 0
     try:
         config = CodeReviewConfig(
             groq_api_endpoint=os.getenv("GROQ_API_ENDPOINT", ""),
             groq_api_key=os.getenv("GROQ_API_KEY", ""),
             github_token=os.getenv("GITHUB_TOKEN", ""),
             repo_name=state.get("repo_name", ""),
-            pull_request_number=int(pr_number),
+            pull_request_number=pr_number_int,
         )
         agent = CodeReviewAgent(config=config)
         feedback = agent.run()
