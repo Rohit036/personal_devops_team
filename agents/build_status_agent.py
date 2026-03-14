@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from agents.base_agent import BaseDevOpsAgent
 import subprocess
 
 class BuildStatusConfig(BaseModel):
@@ -11,7 +11,7 @@ class BuildStatusConfig(BaseModel):
     """
     image_tag: str
 
-class BuildStatusAgent(Agent):
+class BuildStatusAgent(BaseDevOpsAgent):
     """
     An agent that checks the build status of Docker images.
     
@@ -26,7 +26,6 @@ class BuildStatusAgent(Agent):
         Args:
             config (BuildStatusConfig): Configuration object containing the image tag to check
         """
-        super().__init__()
         self.config = config
 
     def check_build_status(self) -> str:

@@ -2,6 +2,7 @@ from agents.github_actions_agent import GitHubActionsAgent, GitHubActionsConfig
 from agents.dockerfile_agent import DockerfileAgent, DockerfileConfig
 from agents.build_predictor_agent import BuildPredictorAgent, BuildPredictorConfig
 from agents.build_status_agent import BuildStatusAgent, BuildStatusConfig
+from orchestrator.langgraph_orchestrator import build_orchestrator
 import os
 from dotenv import load_dotenv
 
@@ -12,11 +13,12 @@ def main():
     """
     Main orchestration function that coordinates the DevOps AI team's activities.
     
-    This function manages four main tasks:
+    This function manages five main tasks:
     1. Creating a GitHub Actions CI/CD pipeline
     2. Generating a Dockerfile
     3. Building and checking Docker image status
     4. Predicting build success/failure
+    5. Demonstrating the LangGraph agent orchestrator
     """
     print("🤖 DevOps AI Team Starting Up...")
 
@@ -77,7 +79,6 @@ def main():
     print("\n4️⃣ Build Predictor Agent: Analyzing build patterns...")
     predictor_config = BuildPredictorConfig(
         model="llama3-8b-8192",  # Using Groq's recommended model
-        groq_api_endpoint=os.getenv("GROQ_API_ENDPOINT"),
         groq_api_key=os.getenv("GROQ_API_KEY")
     )
     predictor_agent = BuildPredictorAgent(config=predictor_config)
@@ -95,7 +96,53 @@ def main():
     prediction = predictor_agent.predict_build_failure(build_data)
     print(f"🔮 Build Prediction: {prediction}")
 
+    # 5. LangGraph Orchestrator Demo
+    print("\n5️⃣ LangGraph Orchestrator: Running full-pipeline demo...")
+    repo_name = os.getenv("GITHUB_REPOSITORY", "owner/repo")
+    _run_orchestrator_demo(repo_name)
+
     print("\n✨ DevOps AI Team has completed their tasks!")
+
+
+def _run_orchestrator_demo(repo_name: str):
+    """
+    Demonstrate the LangGraph orchestrator with a backlog-refinement task
+    (safe to run without a real PR number).
+    """
+    graph = build_orchestrator()
+
+    sample_items = [
+        "Add user authentication to the API",
+        "Fix slow database queries on the reports page",
+        "Create a dashboard for build metrics",
+    ]
+
+    print("  📋 Refining sample backlog items with Azure OpenAI + LangGraph...")
+    result = graph.invoke({
+        "task": "backlog_refinement",
+        "repo_name": repo_name,
+        "pr_number": None,
+        "backlog_items": sample_items,
+        "messages": [],
+        "code_review_result": None,
+        "backlog_result": None,
+        "build_prediction": None,
+        "build_status": None,
+        "error": None,
+    })
+
+    for msg in result.get("messages", []):
+        print(f"  {msg}")
+
+    backlog_result = result.get("backlog_result", {})
+    if backlog_result.get("status") == "success":
+        for item in backlog_result.get("refined", []):
+            print(f"\n  📌 {item.get('user_story', item.get('original', ''))}")
+            print(f"     Points: {item.get('story_points')}  Priority: {item.get('priority')}")
+    else:
+        print(f"  ⚠️  Backlog refinement skipped (Azure OpenAI not configured): "
+              f"{backlog_result.get('error', 'unknown error')}")
+
 
 if __name__ == "__main__":
     main()

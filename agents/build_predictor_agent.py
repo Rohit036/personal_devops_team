@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from agents.base_agent import BaseDevOpsAgent
 from groq import Groq
 from typing import Dict, Any
 
@@ -15,7 +15,7 @@ class BuildPredictorConfig(BaseModel):
     model: str = "llama3-8b-8192"  # Using Groq's recommended model
     groq_api_key: str
 
-class BuildPredictorAgent(Agent):
+class BuildPredictorAgent(BaseDevOpsAgent):
     """
     An AI agent that predicts potential build failures by analyzing build data.
     
@@ -30,7 +30,6 @@ class BuildPredictorAgent(Agent):
         Args:
             config (BuildPredictorConfig): Configuration object containing model and API settings
         """
-        super().__init__()
         self.config = config
         self.client = Groq(api_key=config.groq_api_key)
 

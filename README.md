@@ -1,6 +1,11 @@
 # TALKITDOIT - DevOps AI Agent Team 🤖
 
-Welcome to the talkitdoit project! This repository contains a team of AI agents that help automate and enhance your DevOps workflow. As featured on our [YouTube Channel](youtube.com/@talkitdoit), these agents work together to handle various DevOps tasks including code review, build prediction, and infrastructure management.
+Welcome to the talkitdoit project! This repository contains a team of AI agents that help automate and enhance your DevOps workflow. As featured on our [YouTube Channel](youtube.com/@talkitdoit), these agents work together to handle various DevOps tasks including code review, backlog refinement, build prediction, and infrastructure management.
+
+The agents are now orchestrated by a **LangGraph** state machine and backed by **Azure OpenAI** (with Groq as an alternative), making this repo a practical demo for:
+- GitHub + Azure OpenAI + LangGraph experimentation
+- Rapid delivery and developer experience patterns
+- AI agent design standards and orchestration
 
 [![YouTube Channel](https://img.shields.io/badge/YouTube-Subscribe-red)](https://www.youtube.com/@talkitdoit)
 [![GitHub Stars](https://img.shields.io/github/stars/talkitdoit/talkitdoit-ai?style=social)](https://github.com/talkitdoit/build-a-devops-team-using-ai-agents)
@@ -10,175 +15,231 @@ Welcome to the talkitdoit project! This repository contains a team of AI agents 
 
 - 🔄 Automated CI/CD Pipeline Generation
 - 🐳 Docker Configuration Management
-- 📊 Build Success Prediction
-- 🔍 AI-Powered Code Review
-- 💬 Natural Language Interaction
+- 📊 Build Success Prediction (Groq LLM)
+- 🔍 AI-Powered Code Review (posts directly to GitHub PRs)
+- 💬 Natural Language PR Interaction
 - 📈 Real-time Build Status Monitoring
+- 📋 **Backlog Refinement Agent** — turns raw ideas into structured user stories (Azure OpenAI)
+- 🧠 **LangGraph Orchestrator** — state-machine coordination of all agents
+- ☁️ **Azure OpenAI** support (GPT-4o / GPT-4 Turbo)
+
+## 🏗️ Architecture
+
+```
+main.py
+  └── LangGraph Orchestrator  (orchestrator/langgraph_orchestrator.py)
+        ├── code_review        → agents/code_review_agent.py      (Groq)
+        ├── backlog_refinement → agents/backlog_refinement_agent.py (Azure OpenAI)
+        └── build_prediction   → agents/build_predictor_agent.py   (Groq)
+
+Standalone agents (also callable directly):
+  agents/github_actions_agent.py   — generates CI/CD workflow YAML
+  agents/dockerfile_agent.py       — generates Dockerfiles
+  agents/build_status_agent.py     — checks local Docker image status
+  agents/chat_agent.py             — general PR chat assistant
+```
 
 ## 🚀 Prerequisites & Assumptions
 
-### Required Accounts (All Free Tiers Work!)
-- GitHub Account ([Sign up here](https://github.com/signup))
-  - Used for repository hosting and CI/CD
-  - Free tier includes unlimited public repositories
-  - Includes GitHub Actions minutes for public repositories
-- GROQ Account ([Sign up here](https://groq.com))
-  - Used for AI model access
-  - Free tier includes sufficient API calls to test the project
-  - No credit card required for initial testing
+### Required Accounts
+
+| Account | Purpose | Free Tier |
+|---------|---------|-----------|
+| [GitHub](https://github.com/signup) | Repo hosting + CI/CD | ✅ unlimited public repos |
+| [GROQ](https://groq.com) | Open-source LLMs (Llama 3) | ✅ no credit card required |
+| [Azure](https://azure.microsoft.com/free/) | Azure OpenAI (GPT-4o) | ✅ $200 credit for new accounts |
 
 ### Technical Requirements
 - Python 3.13.0 or higher
 - Docker Desktop
 - Git
-- Basic understanding of:
-  - Command line operations
-  - Git commands
-  - YAML file format
 
 ### Setting Up GitHub Secrets
 
-This project requires certain secrets to be set up in your GitHub repository. Here's how:
+Go to **Settings → Secrets and variables → Actions** and add:
 
-1. Go to your GitHub repository
-2. Click on "Settings" tab
-3. Navigate to "Secrets and variables" → "Actions"
-4. Click "New repository secret"
-5. Add the following secrets:
-   ```
-   GROQ_API_ENDPOINT=https://api.groq.com/v1
-   GROQ_API_KEY=your_groq_api_key
-   GH_TOKEN=your_github_personal_access_token
-   ```
+```
+# Groq
+GROQ_API_ENDPOINT=https://api.groq.com/openai/v1/chat/completions
+GROQ_API_KEY=your_groq_api_key
+
+# Azure OpenAI
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_API_KEY=your_azure_openai_key
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_API_VERSION=2024-02-01
+
+# GitHub
+GH_TOKEN=your_github_personal_access_token
+```
 
 To create a GitHub Personal Access Token:
 1. Go to GitHub Settings → Developer settings → Personal access tokens
 2. Click "Generate new token (classic)"
-3. Give it a name and select these permissions:
-   - `repo` (Full control of private repositories)
-   - `workflow` (Update GitHub Action workflows)
-4. Copy the token immediately (you won't see it again!)
+3. Select `repo` and `workflow` permissions
 
 ## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.13.0 or higher
-- Docker Desktop
-- Git
-- A GROQ API key ([Get one here](https://groq.com))
-- GitHub account with repository access
 
 ### Installation
 
 #### macOS
 
 ```bash
-# Install Homebrew if you haven't already
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Install Python 3.13
 brew install python@3.13
-
-# Install Docker Desktop
 brew install --cask docker
 
-# Clone the repository
-git clone https://github.com/talkitdoit/build-a-devops-team-using-ai-agents.git
-cd build-a-devops-team-using-ai-agents
+git clone https://github.com/Rohit036/personal_devops_team.git
+cd personal_devops_team
 
-# Create and activate virtual environment
 python3.13 -m venv venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
 #### Windows
 
 ```powershell
-# Install Python 3.13 from the official website
-# https://www.python.org/downloads/
+# Install Python 3.13 from https://www.python.org/downloads/
+# Install Docker Desktop from https://www.docker.com/products/docker-desktop
 
-# Install Docker Desktop
-# Download from https://www.docker.com/products/docker-desktop
+git clone https://github.com/Rohit036/personal_devops_team.git
+cd personal_devops_team
 
-# Clone the repository
-git clone https://github.com/talkitdoit/build-a-devops-team-using-ai-agents.git
-cd build-a-devops-team-using-ai-agents
-
-# Create and activate virtual environment
 python -m venv venv
 .\venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
 #### Linux
 
 ```bash
-# Add Python 3.13 repository
 sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
 sudo apt install python3.13 python3.13-venv
-
-# Install Docker
 sudo apt install docker.io
 sudo systemctl start docker
-sudo systemctl enable docker
 sudo usermod -aG docker $USER
 
-# Clone the repository
-git clone https://github.com/talkitdoit/build-a-devops-team-using-ai-agents.git
-cd build-a-devops-team-using-ai-agents
+git clone https://github.com/Rohit036/personal_devops_team.git
+cd personal_devops_team
 
-# Create and activate virtual environment
 python3.13 -m venv venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### Configuration
 
+Copy the example file and fill in your keys:
+
 ```bash
-# Environment variables
-GROQ_API_ENDPOINT=https://api.groq.com/v1
+cp dot_env_example .env
+# Edit .env and add your API keys
+```
+
+Required variables:
+
+```bash
+# Groq (for build prediction + code review)
 GROQ_API_KEY=your_groq_api_key
+GROQ_API_ENDPOINT=https://api.groq.com/openai/v1/chat/completions
+
+# Azure OpenAI (for backlog refinement + orchestrator)
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_API_KEY=your_azure_openai_key
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_API_VERSION=2024-02-01
+
+# GitHub
+GITHUB_TOKEN=your_github_token
 ```
 
 ### Usage
 
 ```bash
-# Activate virtual environment (if not already activated)
-source venv/bin/activate # macOS/Linux
-.\venv\Scripts\activate # Windows
+source venv/bin/activate   # macOS/Linux
+# .\venv\Scripts\activate  # Windows
 
-# Run the main script
 python main.py
+```
+
+### Using the LangGraph Orchestrator directly
+
+```python
+from orchestrator.langgraph_orchestrator import build_orchestrator
+
+graph = build_orchestrator()
+
+# Refine backlog items
+result = graph.invoke({
+    "task": "backlog_refinement",
+    "repo_name": "owner/repo",
+    "pr_number": None,
+    "backlog_items": [
+        "Add OAuth2 login",
+        "Fix memory leak in worker service",
+        "Build deployment dashboard",
+    ],
+    "messages": [],
+    "code_review_result": None,
+    "backlog_result": None,
+    "build_prediction": None,
+    "build_status": None,
+    "error": None,
+})
+
+for item in result["backlog_result"]["refined"]:
+    print(item["user_story"])
+    print("  Acceptance criteria:", item["acceptance_criteria"])
+    print("  Story points:", item["story_points"])
+
+# Code review on a PR
+result = graph.invoke({
+    "task": "code_review",
+    "repo_name": "owner/repo",
+    "pr_number": 42,
+    "backlog_items": None,
+    "messages": [],
+    "code_review_result": None,
+    "backlog_result": None,
+    "build_prediction": None,
+    "build_status": None,
+    "error": None,
+})
 ```
 
 ### Project Structure
 
 ```
-talkitdoit-ai/
-├── agents/           # AI agent implementations
-├── models/           # Data models and schemas
-├── utils/           # Utility functions
-├── html/            # Web interface files
-├── .github/workflows/ # GitHub Actions workflows
-├── main.py          # Main orchestration script
-└── requirements.txt  # Python dependencies
+personal_devops_team/
+├── agents/
+│   ├── base_agent.py              # Base class for all agents
+│   ├── backlog_refinement_agent.py # NEW – Azure OpenAI backlog agent
+│   ├── code_review_agent.py        # PR code review (Groq)
+│   ├── chat_agent.py               # PR chat assistant (Groq)
+│   ├── build_predictor_agent.py    # Build failure prediction (Groq)
+│   ├── build_status_agent.py       # Docker image status check
+│   ├── dockerfile_agent.py         # Dockerfile generator
+│   └── github_actions_agent.py     # CI/CD workflow generator
+├── orchestrator/
+│   └── langgraph_orchestrator.py   # NEW – LangGraph state machine
+├── models/
+│   └── groq_models.py              # Pydantic data models
+├── utils/
+│   ├── azure_openai_client.py      # NEW – Azure OpenAI wrapper
+│   └── groq_client.py              # Groq HTTP client
+├── html/                           # Web interface files
+├── .github/workflows/
+│   └── ai_agents.yml               # GitHub Actions pipeline
+├── main.py                         # Main orchestration script
+├── requirements.txt                # Python dependencies
+└── dot_env_example                 # Example environment config
 ```
 
-This README provides:
-- Clear installation instructions for all major platforms
-- Step-by-step configuration guide
-- Troubleshooting tips
-- Project structure explanation
-- Links to YouTube content
-- Contributing guidelines
-- Professional formatting with emojis and badges
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-agent`)
+3. Commit your changes (`git commit -m 'Add new agent'`)
+4. Push to the branch (`git push origin feature/my-agent`)
+5. Open a Pull Request — the AI agents will review it automatically!
