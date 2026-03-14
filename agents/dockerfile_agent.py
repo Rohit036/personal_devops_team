@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from agents.base_agent import BaseDevOpsAgent
 from models.groq_models import DockerConfig
 from utils.groq_client import GROQClient
 import os
@@ -28,7 +28,7 @@ class DockerfileConfig(BaseModel):
     groq_api_key: str
 
 
-class DockerfileAgent(Agent):
+class DockerfileAgent(BaseDevOpsAgent):
     """
     An AI agent that generates and manages Dockerfile configurations.
     
@@ -43,7 +43,6 @@ class DockerfileAgent(Agent):
         Args:
             config (DockerfileConfig): Configuration object containing Docker and API settings
         """
-        super().__init__()  # Call parent without config
         self.config = config
         self.groq_client = GROQClient(
             api_endpoint=config.groq_api_endpoint,

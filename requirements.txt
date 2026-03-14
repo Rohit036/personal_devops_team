@@ -6,3 +6,8 @@ python-dotenv
 PyGithub
 groq
 pydantic-ai
+# Azure OpenAI + LangGraph orchestration
+openai>=1.57.4
+langchain-core>=0.3.0
+langchain-openai>=0.3.0
+langgraph>=0.2.0

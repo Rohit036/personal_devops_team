@@ -1,6 +1,16 @@
 # change the name of this file to .env
 
+# ── Groq (open-source LLMs) ────────────────────────────────────────────────
 GROQ_API_KEY='gsk_add_your_key_here'
 GROQ_CHAT_ENDPOINT='https://api.groq.com/openai/v1/chat/completions'
 GROQ_API_ENDPOINT='https://api.groq.com/openai/v1/chat/completions'
+
+# ── Azure OpenAI ───────────────────────────────────────────────────────────
+# Required for BacklogRefinementAgent and the LangGraph orchestrator
+AZURE_OPENAI_ENDPOINT='https://your-resource-name.openai.azure.com/'
+AZURE_OPENAI_API_KEY='your_azure_openai_key_here'
+AZURE_OPENAI_DEPLOYMENT_NAME='gpt-4o'
+AZURE_OPENAI_API_VERSION='2024-02-01'
+
+# ── GitHub ─────────────────────────────────────────────────────────────────
 GITHUB_TOKEN='ghp_add_your_token_here'

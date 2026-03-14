@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from agents.base_agent import BaseDevOpsAgent
 from utils.groq_client import GROQClient
 
 class GitHubActionsConfig(BaseModel):
@@ -19,7 +19,7 @@ class GitHubActionsConfig(BaseModel):
     groq_api_endpoint: str
     groq_api_key: str
 
-class GitHubActionsAgent(Agent):
+class GitHubActionsAgent(BaseDevOpsAgent):
     """
     An AI agent that generates and manages GitHub Actions workflows.
     
@@ -34,7 +34,6 @@ class GitHubActionsAgent(Agent):
         Args:
             config (GitHubActionsConfig): Configuration object containing workflow settings
         """
-        super().__init__()
         self.config = config
         self.groq_client = GROQClient(
             api_endpoint=config.groq_api_endpoint,

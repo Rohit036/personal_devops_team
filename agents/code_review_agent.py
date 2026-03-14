@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_ai import Agent  # Replace with actual import if different
+from agents.base_agent import BaseDevOpsAgent
 from utils.groq_client import GROQClient
 from models.groq_models import CodeReviewRequest, CodeReviewFeedback
 from github import Github
@@ -24,7 +24,7 @@ class CodeReviewConfig(BaseModel):
     repo_name: str
     pull_request_number: int
 
-class CodeReviewAgent(Agent):
+class CodeReviewAgent(BaseDevOpsAgent):
     """
     An AI agent that performs automated code reviews on GitHub pull requests.
     
@@ -39,7 +39,6 @@ class CodeReviewAgent(Agent):
         Args:
             config (CodeReviewConfig): Configuration object containing API keys and settings
         """
-        super().__init__()  # Don't pass config to parent
         self.config = config
         self.groq_client = GROQClient(
             api_endpoint=config.groq_api_endpoint,

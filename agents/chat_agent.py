@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_ai import Agent  # Replace with actual import if different
+from agents.base_agent import BaseDevOpsAgent
 from utils.groq_client import GROQClient
 from models.groq_models import ChatCreateRequest, ChatCreateResponse
 from github import Github
@@ -25,16 +25,13 @@ class ChatAgentConfig(BaseModel):
     repo_name: str  # e.g., "username/repo"
     pull_request_number: int
 
-class ChatAgent(Agent):
+class ChatAgent(BaseDevOpsAgent):
     """
     An AI agent that interacts with GitHub pull requests using GROQ's language models.
     
     This agent can analyze pull requests, provide feedback, and post comments directly
     to GitHub using AI-generated responses.
     """
-    config: ChatAgentConfig
-    groq_client: GROQClient
-    github_client: Github
 
     def __init__(self, config: ChatAgentConfig):
         """
@@ -43,7 +40,7 @@ class ChatAgent(Agent):
         Args:
             config (ChatAgentConfig): Configuration object containing API keys and settings
         """
-        super().__init__(config)
+        self.config = config
         self.groq_client = GROQClient(
             api_endpoint=config.groq_api_endpoint,
             api_key=config.groq_api_key
