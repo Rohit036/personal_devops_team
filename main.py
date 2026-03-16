@@ -23,6 +23,7 @@ def main(mode: str = "full", repo_name: str | None = None, max_issues: int = 5):
     5. Demonstrating the LangGraph agent orchestrator
     """
     print("🤖 DevOps AI Team Starting Up...")
+    print("Need to add logger also.")
 
     resolved_repo_name = repo_name or os.getenv("GITHUB_REPOSITORY", "owner/repo")
 
