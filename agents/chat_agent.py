@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from agents.base_agent import BaseDevOpsAgent
-from utils.groq_client import GROQClient
-from models.groq_models import ChatCreateRequest, ChatCreateResponse
+from utils.azure_openai_client import AzureOpenAIClient
 from github import Github
 import os
 from typing import Dict, Any
@@ -11,23 +10,37 @@ class ChatAgentConfig(BaseModel):
     Configuration settings for the Chat agent.
     
     Attributes:
-        chat_model_id (str): Identifier for the chat model to be used
-        groq_api_endpoint (str): GROQ API endpoint URL
-        groq_api_key (str): Authentication key for GROQ API
+        azure_openai_endpoint (str): Azure OpenAI endpoint URL
+        azure_openai_key (str): Azure OpenAI API key
+        azure_openai_deployment (str): Azure model deployment name
+        azure_openai_api_version (str): Azure OpenAI API version
         github_token (str): GitHub authentication token
         repo_name (str): GitHub repository name in format "username/repo"
         pull_request_number (int): PR number to analyze and comment on
     """
-    chat_model_id: str
-    groq_api_endpoint: str
-    groq_api_key: str
+    azure_openai_endpoint: str = ""
+    azure_openai_key: str = ""
+    azure_openai_deployment: str = "gpt-4o"
+    azure_openai_api_version: str = "2024-12-01-preview"
     github_token: str
     repo_name: str  # e.g., "username/repo"
     pull_request_number: int
 
+    @classmethod
+    def from_env(cls, repo_name: str, pull_request_number: int) -> "ChatAgentConfig":
+        return cls(
+            azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            azure_openai_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
+            azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+            azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
+            github_token=os.getenv("GITHUB_TOKEN", ""),
+            repo_name=repo_name,
+            pull_request_number=pull_request_number,
+        )
+
 class ChatAgent(BaseDevOpsAgent):
     """
-    An AI agent that interacts with GitHub pull requests using GROQ's language models.
+    An AI agent that interacts with GitHub pull requests using Azure OpenAI.
     
     This agent can analyze pull requests, provide feedback, and post comments directly
     to GitHub using AI-generated responses.
@@ -41,9 +54,12 @@ class ChatAgent(BaseDevOpsAgent):
             config (ChatAgentConfig): Configuration object containing API keys and settings
         """
         self.config = config
-        self.groq_client = GROQClient(
-            api_endpoint=config.groq_api_endpoint,
-            api_key=config.groq_api_key
+        self.azure_client = AzureOpenAIClient(
+            endpoint=config.azure_openai_endpoint,
+            api_key=config.azure_openai_key,
+            deployment_name=config.azure_openai_deployment,
+            api_version=config.azure_openai_api_version,
+            temperature=0.4,
         )
         self.github_client = Github(config.github_token)
 
@@ -59,9 +75,9 @@ class ChatAgent(BaseDevOpsAgent):
         files = pull_request.get_files()
         return files
 
-    def perform_chat_interaction(self, user_message: str, context: Dict[str, Any] = None) -> ChatCreateResponse:
+    def perform_chat_interaction(self, user_message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Send a message to the GROQ API and get an AI-generated response.
+        Send a message to Azure OpenAI and get an AI-generated response.
         
         Args:
             user_message (str): The message to send to the AI
@@ -73,13 +89,19 @@ class ChatAgent(BaseDevOpsAgent):
         Raises:
             Exception: If the chat interaction fails
         """
-        chat_request = ChatCreateRequest(
-            user_message=user_message,
-            context=context
-        )
         try:
-            response = self.groq_client.send_chat_create_request(chat_request)
-            return response
+            full_message = user_message
+            if context:
+                full_message += f"\n\nContext: {context}"
+            bot_response = self.azure_client.chat(
+                system_prompt="You are a helpful GitHub pull request assistant.",
+                user_message=full_message,
+            )
+            return {
+                "bot_response": bot_response,
+                "confidence": 0.8,
+                "status": "success",
+            }
         except Exception as e:
             print(f"Error during chat interaction: {e}")
             raise
@@ -113,13 +135,13 @@ class ChatAgent(BaseDevOpsAgent):
         user_message = "Please review the recent changes in this pull request for code quality and potential issues."
         response = self.perform_chat_interaction(user_message)
         
-        if response.status == "success":
-            bot_response = response.bot_response
+        if response.get("status") == "success":
+            bot_response = response.get("bot_response", "")
             self.post_feedback_to_github(bot_response)
             return {
                 "bot_response": bot_response,
-                "confidence": response.confidence,
-                "status": response.status
+                "confidence": response.get("confidence", 0.0),
+                "status": response.get("status", "error"),
             }
         else:
-            return {"error": "Failed to get a successful response from GROQ Chat-Create API."}
+            return {"error": "Failed to get a successful response from Azure OpenAI."}

@@ -1,37 +1,41 @@
+import os
+from typing import Any, Dict
+
 from pydantic import BaseModel
+
 from agents.base_agent import BaseDevOpsAgent
-from groq import Groq
-from typing import Dict, Any
+from utils.azure_openai_client import AzureOpenAIClient
 
 # Configuration class for the BuildPredictor agent
 class BuildPredictorConfig(BaseModel):
-    """
-    Configuration settings for the BuildPredictor agent.
-    
-    Attributes:
-        model (str): The LLM model to be used for predictions (default: llama3-8b-8192)
-        groq_api_key (str): API key for authentication with Groq's services
-    """
-    model: str = "llama3-8b-8192"  # Using Groq's recommended model
-    groq_api_key: str
+    """Configuration settings for the Azure OpenAI build predictor."""
+
+    azure_openai_endpoint: str = ""
+    azure_openai_key: str = ""
+    azure_openai_deployment: str = "gpt-4o"
+    azure_openai_api_version: str = "2024-12-01-preview"
+
+    @classmethod
+    def from_env(cls) -> "BuildPredictorConfig":
+        return cls(
+            azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            azure_openai_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
+            azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+            azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
+        )
 
 class BuildPredictorAgent(BaseDevOpsAgent):
-    """
-    An AI agent that predicts potential build failures by analyzing build data.
-    
-    This agent uses Groq's LLM to analyze build patterns and predict possible failures
-    before they occur, enabling proactive issue resolution.
-    """
+    """Predict potential build failures using Azure OpenAI."""
 
     def __init__(self, config: BuildPredictorConfig):
-        """
-        Initialize the BuildPredictor agent.
-        
-        Args:
-            config (BuildPredictorConfig): Configuration object containing model and API settings
-        """
         self.config = config
-        self.client = Groq(api_key=config.groq_api_key)
+        self.client = AzureOpenAIClient(
+            endpoint=config.azure_openai_endpoint,
+            api_key=config.azure_openai_key,
+            deployment_name=config.azure_openai_deployment,
+            api_version=config.azure_openai_api_version,
+            temperature=0.2,
+        )
 
     def predict_build_failure(self, build_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -48,27 +52,13 @@ class BuildPredictorAgent(BaseDevOpsAgent):
                 - error: Error message if status is 'error'
         """
         try:
-            # Create a chat completion request to analyze the build data
-            chat_completion = self.client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a build failure prediction assistant. Analyze the build data and predict if the build might fail."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Please analyze this build data and predict if it might fail: {build_data}"
-                    }
-                ],
-                model=self.config.model,
-                temperature=0.7,  # Balance between creativity and consistency
-                max_tokens=1024   # Maximum length of the generated response
+            prediction = self.client.chat(
+                system_prompt=(
+                    "You are a build failure prediction assistant. Analyze build metadata and "
+                    "explain failure risk, likely causes, and next checks."
+                ),
+                user_message=f"Build data: {build_data}",
             )
-            
-            return {
-                "prediction": chat_completion.choices[0].message.content,
-                "status": "success"
-            }
+            return {"prediction": prediction, "status": "success"}
         except Exception as e:
-            # Return error information if the prediction fails
             return {"error": str(e), "status": "error"}

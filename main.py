@@ -3,13 +3,15 @@ from agents.dockerfile_agent import DockerfileAgent, DockerfileConfig
 from agents.build_predictor_agent import BuildPredictorAgent, BuildPredictorConfig
 from agents.build_status_agent import BuildStatusAgent, BuildStatusConfig
 from orchestrator.langgraph_orchestrator import build_orchestrator
+import argparse
 import os
 from dotenv import load_dotenv
+from github import Auth, Github
 
 # Load environment variables from .env file
 load_dotenv()
 
-def main():
+def main(mode: str = "full", repo_name: str | None = None, max_issues: int = 5):
     """
     Main orchestration function that coordinates the DevOps AI team's activities.
     
@@ -22,14 +24,26 @@ def main():
     """
     print("🤖 DevOps AI Team Starting Up...")
 
+    resolved_repo_name = repo_name or os.getenv("GITHUB_REPOSITORY", "owner/repo")
+
+    if mode == "quick":
+        print("\n⚡ Quick mode: running only the Azure OpenAI backlog-refinement demo")
+        _run_orchestrator_demo(resolved_repo_name)
+        print("\n✨ Quick demo completed!")
+        return
+
+    if mode == "issues":
+        print("\n🧾 Issues mode: reading open GitHub issues and refining them as stories")
+        _run_github_issues_demo(resolved_repo_name, max_issues=max_issues)
+        print("\n✨ Issues demo completed!")
+        return
+
     # 1. Create GitHub Actions Pipeline
     print("\n1️⃣ GitHub Actions Agent: Creating CI/CD Pipeline...")
     gha_config = GitHubActionsConfig(
         workflow_name="CI Pipeline",
         python_version="3.13.0",
         run_tests=True,
-        groq_api_endpoint=os.getenv("GROQ_API_ENDPOINT"),
-        groq_api_key=os.getenv("GROQ_API_KEY")
     )
     gha_agent = GitHubActionsAgent(config=gha_config)
     pipeline = gha_agent.generate_pipeline()
@@ -46,8 +60,6 @@ def main():
         expose_port=80,                   # Standard HTTP port
         copy_source="./html",             # Source directory for web content
         work_dir="/usr/share/nginx/html", # Default nginx content directory
-        groq_api_endpoint=os.getenv("GROQ_API_ENDPOINT"),
-        groq_api_key=os.getenv("GROQ_API_KEY")
     )
     docker_agent = DockerfileAgent(config=docker_config)
     dockerfile = docker_agent.generate_dockerfile()
@@ -78,8 +90,10 @@ def main():
     # 4. Predict Build Success/Failure
     print("\n4️⃣ Build Predictor Agent: Analyzing build patterns...")
     predictor_config = BuildPredictorConfig(
-        model="llama3-8b-8192",  # Using Groq's recommended model
-        groq_api_key=os.getenv("GROQ_API_KEY")
+        azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+        azure_openai_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
+        azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+        azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
     )
     predictor_agent = BuildPredictorAgent(config=predictor_config)
     
@@ -98,8 +112,7 @@ def main():
 
     # 5. LangGraph Orchestrator Demo
     print("\n5️⃣ LangGraph Orchestrator: Running full-pipeline demo...")
-    repo_name = os.getenv("GITHUB_REPOSITORY", "owner/repo")
-    _run_orchestrator_demo(repo_name)
+    _run_orchestrator_demo(resolved_repo_name)
 
     print("\n✨ DevOps AI Team has completed their tasks!")
 
@@ -109,8 +122,6 @@ def _run_orchestrator_demo(repo_name: str):
     Demonstrate the LangGraph orchestrator with a backlog-refinement task
     (safe to run without a real PR number).
     """
-    graph = build_orchestrator()
-
     sample_items = [
         "Add user authentication to the API",
         "Fix slow database queries on the reports page",
@@ -118,11 +129,51 @@ def _run_orchestrator_demo(repo_name: str):
     ]
 
     print("  📋 Refining sample backlog items with Azure OpenAI + LangGraph...")
+    _refine_backlog_items(repo_name, sample_items)
+
+
+def _run_github_issues_demo(repo_name: str, max_issues: int = 5):
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        print("  ⚠️  GITHUB_TOKEN is missing; cannot read issues from GitHub.")
+        return
+
+    try:
+        gh = Github(auth=Auth.Token(token))
+        repo = gh.get_repo(repo_name)
+        open_issues = repo.get_issues(state="open")
+
+        issue_titles: list[str] = []
+        issue_refs: list[str] = []
+        for issue in open_issues:
+            # GitHub API returns PRs in the issues list; skip those for backlog demo.
+            if issue.pull_request is not None:
+                continue
+            issue_titles.append(issue.title)
+            issue_refs.append(f"#{issue.number}")
+            if len(issue_titles) >= max_issues:
+                break
+
+        if not issue_titles:
+            print(f"  ⚠️  No open issues found in {repo_name}.")
+            return
+
+        print(
+            f"  📥 Loaded {len(issue_titles)} open issue(s) from {repo_name}: "
+            f"{', '.join(issue_refs)}"
+        )
+        _refine_backlog_items(repo_name, issue_titles)
+    except Exception as exc:
+        print(f"  ❌ Failed to fetch issues from GitHub: {exc}")
+
+
+def _refine_backlog_items(repo_name: str, backlog_items: list[str]):
+    graph = build_orchestrator()
     result = graph.invoke({
         "task": "backlog_refinement",
         "repo_name": repo_name,
         "pr_number": None,
-        "backlog_items": sample_items,
+        "backlog_items": backlog_items,
         "messages": [],
         "code_review_result": None,
         "backlog_result": None,
@@ -145,4 +196,23 @@ def _run_orchestrator_demo(repo_name: str):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run the DevOps AI Team demo")
+    parser.add_argument(
+        "--mode",
+        choices=["quick", "issues", "full"],
+        default="full",
+        help="quick = static backlog demo, issues = GitHub issues backlog demo, full = complete pipeline",
+    )
+    parser.add_argument(
+        "--repo",
+        default=None,
+        help="GitHub repo in owner/repo format (defaults to GITHUB_REPOSITORY env var)",
+    )
+    parser.add_argument(
+        "--max-issues",
+        type=int,
+        default=5,
+        help="Maximum number of open issues to fetch for issues mode",
+    )
+    args = parser.parse_args()
+    main(mode=args.mode, repo_name=args.repo, max_issues=args.max_issues)

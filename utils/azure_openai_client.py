@@ -15,7 +15,7 @@ class AzureOpenAIClient:
     * ``AZURE_OPENAI_ENDPOINT``
     * ``AZURE_OPENAI_API_KEY``
     * ``AZURE_OPENAI_DEPLOYMENT_NAME``  (default: ``gpt-4o``)
-    * ``AZURE_OPENAI_API_VERSION``       (default: ``2024-02-01``)
+    * ``AZURE_OPENAI_API_VERSION``       (default: ``2024-12-01-preview``)
     """
 
     def __init__(
@@ -30,7 +30,7 @@ class AzureOpenAIClient:
             azure_endpoint=endpoint or os.getenv("AZURE_OPENAI_ENDPOINT") or None,
             api_key=api_key or os.getenv("AZURE_OPENAI_API_KEY") or None,
             azure_deployment=deployment_name or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
-            api_version=api_version or os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
+            api_version=api_version or os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
             temperature=temperature,
         )
 

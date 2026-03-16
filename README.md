@@ -2,7 +2,7 @@
 
 Welcome to the talkitdoit project! This repository contains a team of AI agents that help automate and enhance your DevOps workflow. As featured on our [YouTube Channel](youtube.com/@talkitdoit), these agents work together to handle various DevOps tasks including code review, backlog refinement, build prediction, and infrastructure management.
 
-The agents are now orchestrated by a **LangGraph** state machine and backed by **Azure OpenAI** (with Groq as an alternative), making this repo a practical demo for:
+The agents are now orchestrated by a **LangGraph** state machine and backed by **Azure OpenAI**, making this repo a practical demo for:
 - GitHub + Azure OpenAI + LangGraph experimentation
 - Rapid delivery and developer experience patterns
 - AI agent design standards and orchestration
@@ -15,7 +15,7 @@ The agents are now orchestrated by a **LangGraph** state machine and backed by *
 
 - 🔄 Automated CI/CD Pipeline Generation
 - 🐳 Docker Configuration Management
-- 📊 Build Success Prediction (Groq LLM)
+- 📊 Build Success Prediction (Azure OpenAI)
 - 🔍 AI-Powered Code Review (posts directly to GitHub PRs)
 - 💬 Natural Language PR Interaction
 - 📈 Real-time Build Status Monitoring
@@ -28,9 +28,9 @@ The agents are now orchestrated by a **LangGraph** state machine and backed by *
 ```
 main.py
   └── LangGraph Orchestrator  (orchestrator/langgraph_orchestrator.py)
-        ├── code_review        → agents/code_review_agent.py      (Groq)
+        ├── code_review        → agents/code_review_agent.py      (Azure OpenAI)
         ├── backlog_refinement → agents/backlog_refinement_agent.py (Azure OpenAI)
-        └── build_prediction   → agents/build_predictor_agent.py   (Groq)
+        └── build_prediction   → agents/build_predictor_agent.py   (Azure OpenAI)
 
 Standalone agents (also callable directly):
   agents/github_actions_agent.py   — generates CI/CD workflow YAML
@@ -46,7 +46,6 @@ Standalone agents (also callable directly):
 | Account | Purpose | Free Tier |
 |---------|---------|-----------|
 | [GitHub](https://github.com/signup) | Repo hosting + CI/CD | ✅ unlimited public repos |
-| [GROQ](https://groq.com) | Open-source LLMs (Llama 3) | ✅ no credit card required |
 | [Azure](https://azure.microsoft.com/free/) | Azure OpenAI (GPT-4o) | ✅ $200 credit for new accounts |
 
 ### Technical Requirements
@@ -59,15 +58,11 @@ Standalone agents (also callable directly):
 Go to **Settings → Secrets and variables → Actions** and add:
 
 ```
-# Groq
-GROQ_API_ENDPOINT=https://api.groq.com/openai/v1/chat/completions
-GROQ_API_KEY=your_groq_api_key
-
 # Azure OpenAI
 AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_API_KEY=your_azure_openai_key
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
-AZURE_OPENAI_API_VERSION=2024-02-01
+AZURE_OPENAI_API_VERSION="2024-12-01-preview"
 
 # GitHub
 GH_TOKEN=your_github_personal_access_token
@@ -140,15 +135,11 @@ cp dot_env_example .env
 Required variables:
 
 ```bash
-# Groq (for build prediction + code review)
-GROQ_API_KEY=your_groq_api_key
-GROQ_API_ENDPOINT=https://api.groq.com/openai/v1/chat/completions
-
-# Azure OpenAI (for backlog refinement + orchestrator)
+# Azure OpenAI (for all AI agents + orchestrator)
 AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_API_KEY=your_azure_openai_key
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
-AZURE_OPENAI_API_VERSION=2024-02-01
+AZURE_OPENAI_API_VERSION="2024-12-01-preview"
 
 # GitHub
 GITHUB_TOKEN=your_github_token
@@ -160,7 +151,11 @@ GITHUB_TOKEN=your_github_token
 source venv/bin/activate   # macOS/Linux
 # .\venv\Scripts\activate  # Windows
 
-python main.py
+# Quick mode (recommended first run; no Docker build required)
+python main.py --mode quick
+
+# Full mode (runs CI/Docker generation + docker build + predictor + orchestrator)
+python main.py --mode full
 ```
 
 ### Using the LangGraph Orchestrator directly
@@ -215,19 +210,16 @@ personal_devops_team/
 ├── agents/
 │   ├── base_agent.py              # Base class for all agents
 │   ├── backlog_refinement_agent.py # NEW – Azure OpenAI backlog agent
-│   ├── code_review_agent.py        # PR code review (Groq)
-│   ├── chat_agent.py               # PR chat assistant (Groq)
-│   ├── build_predictor_agent.py    # Build failure prediction (Groq)
+│   ├── code_review_agent.py        # PR code review (Azure OpenAI)
+│   ├── chat_agent.py               # PR chat assistant (Azure OpenAI)
+│   ├── build_predictor_agent.py    # Build failure prediction (Azure OpenAI)
 │   ├── build_status_agent.py       # Docker image status check
 │   ├── dockerfile_agent.py         # Dockerfile generator
 │   └── github_actions_agent.py     # CI/CD workflow generator
 ├── orchestrator/
 │   └── langgraph_orchestrator.py   # NEW – LangGraph state machine
-├── models/
-│   └── groq_models.py              # Pydantic data models
 ├── utils/
 │   ├── azure_openai_client.py      # NEW – Azure OpenAI wrapper
-│   └── groq_client.py              # Groq HTTP client
 ├── html/                           # Web interface files
 ├── .github/workflows/
 │   └── ai_agents.yml               # GitHub Actions pipeline

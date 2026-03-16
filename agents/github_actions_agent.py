@@ -1,30 +1,24 @@
 from pydantic import BaseModel
 from agents.base_agent import BaseDevOpsAgent
-from utils.groq_client import GROQClient
 
 class GitHubActionsConfig(BaseModel):
     """
     Configuration settings for the GitHub Actions workflow generator.
     
     Attributes:
-        workflow_name (str): Name of the GitHub Actions workflow
-        python_version (str): Python version to use in the pipeline
-        run_tests (bool): Whether to run tests in the pipeline
-        groq_api_endpoint (str): GROQ API endpoint URL
-        groq_api_key (str): Authentication key for GROQ API
+      workflow_name (str): Name of the GitHub Actions workflow
+      python_version (str): Python version to use in the pipeline
+      run_tests (bool): Whether to run tests in the pipeline
     """
     workflow_name: str
     python_version: str
     run_tests: bool
-    groq_api_endpoint: str
-    groq_api_key: str
 
 class GitHubActionsAgent(BaseDevOpsAgent):
     """
     An AI agent that generates and manages GitHub Actions workflows.
     
-    This agent can fetch configuration from GROQ's API and generate
-    appropriate GitHub Actions workflow files with CI/CD pipeline definitions.
+    This agent generates GitHub Actions workflow files with CI/CD definitions.
     """
 
     def __init__(self, config: GitHubActionsConfig):
@@ -35,33 +29,6 @@ class GitHubActionsAgent(BaseDevOpsAgent):
             config (GitHubActionsConfig): Configuration object containing workflow settings
         """
         self.config = config
-        self.groq_client = GROQClient(
-            api_endpoint=config.groq_api_endpoint,
-            api_key=config.groq_api_key
-        )
-
-    def fetch_config(self):
-        """
-        Fetch workflow configuration from GROQ API.
-        
-        Queries the GROQ API for GitHub Actions configuration settings and updates
-        the agent's configuration accordingly. Falls back to default values
-        if the API request fails.
-        """
-        groq_query = "*[_type == 'githubActionConfig'][0]{workflowName, pythonVersion, runTests}"
-        result = self.groq_client.query(groq_query)
-        if result:
-            # Update configuration with values from GROQ API
-            self.config = GitHubActionsConfig(
-                workflow_name=result.get("workflowName", "CI Pipeline"),
-                python_version=result.get("pythonVersion", "3.13.0"),
-                run_tests=result.get("runTests", True),
-                groq_api_endpoint=result.get("groqApiEndpoint", ""),
-                groq_api_key=result.get("groqApiKey", "")
-            )
-        else:
-            # Fallback to default configuration if API request fails
-            self.config = GitHubActionsConfig()
 
     def generate_pipeline(self) -> str:
         """
@@ -94,8 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      GROQ_API_ENDPOINT: ${{{{ secrets.GROQ_API_ENDPOINT }}}}  # API endpoint for GROQ
-      GROQ_API_KEY: ${{{{ secrets.GROQ_API_KEY }}}}           # Authentication key
+      AZURE_OPENAI_ENDPOINT: ${{{{ secrets.AZURE_OPENAI_ENDPOINT }}}}
+      AZURE_OPENAI_API_KEY: ${{{{ secrets.AZURE_OPENAI_API_KEY }}}}
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{{{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}}}
+      AZURE_OPENAI_API_VERSION: ${{{{ secrets.AZURE_OPENAI_API_VERSION }}}}
       GITHUB_TOKEN: ${{{{ secrets.GH_TOKEN }}}}               # GitHub access token
 
     steps:

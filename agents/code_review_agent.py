@@ -1,28 +1,44 @@
-from pydantic import BaseModel
-from agents.base_agent import BaseDevOpsAgent
-from utils.groq_client import GROQClient
-from models.groq_models import CodeReviewRequest, CodeReviewFeedback
-from github import Github
+import json
 import os
+
+from pydantic import BaseModel
+
+from agents.base_agent import BaseDevOpsAgent
+from utils.azure_openai_client import AzureOpenAIClient
+from github import Github
 
 class CodeReviewConfig(BaseModel):
     """
     Configuration settings for the Code Review agent.
     
     Attributes:
-        model (str): The LLM model to use for code review (default: llama3-8b-8192)
-        groq_api_endpoint (str): GROQ API endpoint URL
-        groq_api_key (str): Authentication key for GROQ API
+        azure_openai_endpoint (str): Azure OpenAI endpoint URL
+        azure_openai_key (str): Azure OpenAI API key
+        azure_openai_deployment (str): Azure model deployment name
+        azure_openai_api_version (str): Azure OpenAI API version
         github_token (str): GitHub authentication token
         repo_name (str): GitHub repository name in format "username/repo"
         pull_request_number (int): PR number to review
     """
-    model: str = "llama3-8b-8192"  # Default model for code review
-    groq_api_endpoint: str
-    groq_api_key: str
+    azure_openai_endpoint: str = ""
+    azure_openai_key: str = ""
+    azure_openai_deployment: str = "gpt-4o"
+    azure_openai_api_version: str = "2024-12-01-preview"
     github_token: str
     repo_name: str
     pull_request_number: int
+
+    @classmethod
+    def from_env(cls, repo_name: str, pull_request_number: int) -> "CodeReviewConfig":
+        return cls(
+            azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            azure_openai_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
+            azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+            azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
+            github_token=os.getenv("GITHUB_TOKEN", ""),
+            repo_name=repo_name,
+            pull_request_number=pull_request_number,
+        )
 
 class CodeReviewAgent(BaseDevOpsAgent):
     """
@@ -40,9 +56,12 @@ class CodeReviewAgent(BaseDevOpsAgent):
             config (CodeReviewConfig): Configuration object containing API keys and settings
         """
         self.config = config
-        self.groq_client = GROQClient(
-            api_endpoint=config.groq_api_endpoint,
-            api_key=config.groq_api_key
+        self.azure_client = AzureOpenAIClient(
+            endpoint=config.azure_openai_endpoint,
+            api_key=config.azure_openai_key,
+            deployment_name=config.azure_openai_deployment,
+            api_version=config.azure_openai_api_version,
+            temperature=0.2,
         )
         self.github_client = Github(self.config.github_token)
 
@@ -64,7 +83,7 @@ class CodeReviewAgent(BaseDevOpsAgent):
         
         The method:
         1. Fetches modified files from the pull request
-        2. Analyzes Python files using the GROQ API
+        2. Analyzes Python files using Azure OpenAI
         3. Generates detailed feedback for each file
         
         Returns:
@@ -76,24 +95,17 @@ class CodeReviewAgent(BaseDevOpsAgent):
 
         for file in files:
             if file.filename.endswith('.py'):  # Focus on Python files
-                file_content = file.patch  # Get the diff
-                # Create review request for the file
-                code_review_request = CodeReviewRequest(
-                    file_name=file.filename,
-                    file_content=file.raw_url,  # You might need to fetch the actual content
-                    diff=file.patch
-                )
+                file_content = file.patch or ""
                 try:
-                    # Send the review request to GROQ API
-                    review_feedback = self.groq_client.send_code_review_request(
-                        model_id=self.config.model,
-                        code_review_request=code_review_request
+                    review_feedback = self._review_diff_with_azure(
+                        file_name=file.filename,
+                        diff=file_content,
                     )
                     feedback.append({
                         "file": file.filename,
-                        "issues": review_feedback.issues,
-                        "suggestions": review_feedback.suggestions,
-                        "overall_quality": review_feedback.overall_quality
+                        "issues": review_feedback.get("issues", []),
+                        "suggestions": review_feedback.get("suggestions", []),
+                        "overall_quality": review_feedback.get("overall_quality", "unknown"),
                     })
                 except Exception as e:
                     feedback.append({
@@ -102,6 +114,26 @@ class CodeReviewAgent(BaseDevOpsAgent):
                     })
 
         return feedback
+
+    def _review_diff_with_azure(self, file_name: str, diff: str) -> dict:
+        prompt = (
+            "Review this Python git diff and return strict JSON with keys: "
+            "issues (array of {description,severity}), suggestions (array of strings), "
+            "overall_quality (one of high|medium|low).\n"
+            f"File: {file_name}\nDiff:\n{diff}"
+        )
+        response = self.azure_client.chat(
+            system_prompt="You are a senior Python code reviewer. Return JSON only.",
+            user_message=prompt,
+        )
+        cleaned = response.strip()
+        if cleaned.startswith("```") and "\n" in cleaned:
+            cleaned = cleaned.split("\n", 1)[-1]
+            cleaned = cleaned.rsplit("```", 1)[0].strip()
+        parsed = json.loads(cleaned)
+        if not isinstance(parsed, dict):
+            raise ValueError("Invalid review response format")
+        return parsed
 
     def post_feedback_to_github(self, feedback):
         """

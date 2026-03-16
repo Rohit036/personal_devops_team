@@ -87,8 +87,10 @@ def _run_code_review_node(state: DevOpsAgentState) -> DevOpsAgentState:
     pr_number_int = int(pr_number) if pr_number is not None else 0
     try:
         config = CodeReviewConfig(
-            groq_api_endpoint=os.getenv("GROQ_API_ENDPOINT", ""),
-            groq_api_key=os.getenv("GROQ_API_KEY", ""),
+            azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            azure_openai_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
+            azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+            azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
             github_token=os.getenv("GITHUB_TOKEN", ""),
             repo_name=state.get("repo_name", ""),
             pull_request_number=pr_number_int,
@@ -137,7 +139,10 @@ def _run_build_prediction_node(state: DevOpsAgentState) -> DevOpsAgentState:
 
     try:
         config = BuildPredictorConfig(
-            groq_api_key=os.getenv("GROQ_API_KEY", ""),
+            azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
+            azure_openai_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
+            azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+            azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
         )
         agent = BuildPredictorAgent(config=config)
         build_data: Dict[str, Any] = {

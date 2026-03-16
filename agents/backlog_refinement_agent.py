@@ -26,7 +26,7 @@ class BacklogRefinementConfig(BaseModel):
     azure_openai_endpoint: str = ""
     azure_openai_key: str = ""
     azure_openai_deployment: str = "gpt-4o"
-    azure_openai_api_version: str = "2024-02-01"
+    azure_openai_api_version: str = "2024-12-01-preview"
     max_items_per_call: int = 10
 
     @classmethod
@@ -35,7 +35,7 @@ class BacklogRefinementConfig(BaseModel):
             azure_openai_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
             azure_openai_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
             azure_openai_deployment=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
-            azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
+            azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview"),
         )
 
 
