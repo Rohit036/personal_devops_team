@@ -1,0 +1,4 @@
+# Open requirements.txt and add these lines to see different risk levels:
+requests==2.31.0
+old-unmaintained-lib==0.1.0
+cryptography==3.0.0
