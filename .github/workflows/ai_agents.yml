@@ -65,59 +65,8 @@ jobs:
         print(f'PR description {result[\"action\"]} for PR #{result[\"pr_number\"]}')
         "
 
-    - name: Run Build Predictor Agent
-      run: |
-        python -c "
-        from agents.build_predictor_agent import BuildPredictorAgent, BuildPredictorConfig
-        import os
-        
-        agent = BuildPredictorAgent(BuildPredictorConfig(
-          azure_openai_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', ''),
-          azure_openai_key=os.environ.get('AZURE_OPENAI_API_KEY', ''),
-          azure_openai_deployment=os.environ.get('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o'),
-          azure_openai_api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '"2024-12-01-preview"')
-        ))
-        result = agent.predict_build_failure({'pr_number': '${{ github.event.pull_request.number }}'})
-        print(result)
-        "
-
-    - name: Run Code Review Agent
-      run: |
-        python -c "
-        from agents.code_review_agent import CodeReviewAgent, CodeReviewConfig
-        import os
-        
-        agent = CodeReviewAgent(CodeReviewConfig(
-          azure_openai_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', ''),
-          azure_openai_key=os.environ.get('AZURE_OPENAI_API_KEY', ''),
-          azure_openai_deployment=os.environ.get('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o'),
-          azure_openai_api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '2024-12-01-preview'),
-            github_token=os.environ['GITHUB_TOKEN'],
-            repo_name='${{ github.repository }}',
-            pull_request_number=${{ github.event.pull_request.number }}
-        ))
-        agent.run()
-        "
-
-    - name: Run Chat Agent
-      run: |
-        python -c "
-        from agents.chat_agent import ChatAgent, ChatAgentConfig
-        import os
-        
-        agent = ChatAgent(ChatAgentConfig(
-          azure_openai_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', ''),
-          azure_openai_key=os.environ.get('AZURE_OPENAI_API_KEY', ''),
-          azure_openai_deployment=os.environ.get('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o'),
-          azure_openai_api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '2024-02-01'),
-            github_token=os.environ['GITHUB_TOKEN'],
-            repo_name='${{ github.repository }}',
-            pull_request_number=${{ github.event.pull_request.number }}
-        ))
-        agent.run()
-        "
-
     - name: Run LangGraph Orchestrator (full pipeline)
+      if: github.event.action != 'opened'
       run: |
         python -c "
         from orchestrator.langgraph_orchestrator import build_orchestrator
