@@ -35,6 +35,8 @@ _MAX_DIFF_CHARS = 2000
 
 
 class DependencyRiskConfig(BaseModel):
+    """Configuration for running dependency risk analysis on a PR."""
+
     azure_openai_endpoint: str = ""
     azure_openai_key: str = ""
     azure_openai_deployment: str = "gpt-4o"
@@ -58,8 +60,12 @@ class DependencyRiskConfig(BaseModel):
 
 class DependencyRiskAgent(BaseDevOpsAgent):
     """
-    Analyzes PR changes to dependency files (requirements.txt, package.json, etc.)
-    and flags security/compatibility risks using Azure OpenAI.
+    Analyze dependency-file diffs in a PR and post one upserted risk comment.
+
+    The agent workflow is:
+    1. Collect dependency manifest diffs from PR files
+    2. Ask Azure OpenAI for structured risk analysis
+    3. Upsert a single comment on the PR with findings
     """
 
     def __init__(self, config: DependencyRiskConfig):
@@ -73,30 +79,30 @@ class DependencyRiskAgent(BaseDevOpsAgent):
         )
         self.github_client = Github(config.github_token)
 
-    def _is_dependency_file(self, filename: str) -> bool:
-        """Check if a file is a known dependency manifest."""
+    def _is_supported_manifest(self, filename: str) -> bool:
+        """Return True when filename is a supported dependency manifest."""
         basename = filename.split("/")[-1]
         return basename in _DEPENDENCY_FILES
 
-    def _extract_dependency_changes(self, pr_files: list) -> dict[str, str]:
-        """Extract diffs from dependency files only."""
-        changes = {}
+    def _collect_dependency_diffs(self, pr_files: list) -> dict[str, str]:
+        """Collect trimmed patch content for dependency manifests only."""
+        dependency_diffs: dict[str, str] = {}
         for file in pr_files:
-            if self._is_dependency_file(file.filename):
+            if self._is_supported_manifest(file.filename):
                 patch = (file.patch or "").strip()
                 if patch:
                     if len(patch) > _MAX_DIFF_CHARS:
                         patch = patch[: _MAX_DIFF_CHARS] + "\n... (truncated)"
-                    changes[file.filename] = patch
-        return changes
+                    dependency_diffs[file.filename] = patch
+        return dependency_diffs
 
-    def _analyze_risks(self, dependency_changes: dict[str, str]) -> dict[str, Any]:
-        """Send dependency changes to Azure OpenAI for risk assessment."""
-        if not dependency_changes:
+    def _analyze_risks(self, dependency_diffs: dict[str, str]) -> dict[str, Any]:
+        """Call Azure OpenAI and return structured dependency risk output."""
+        if not dependency_diffs:
             return {"status": "no_changes", "overall_risk": "low", "summary": "No dependency files changed."}
 
         context = "PR Dependency Changes:\n\n"
-        for filename, patch in dependency_changes.items():
+        for filename, patch in dependency_diffs.items():
             context += f"### {filename}\n```\n{patch}\n```\n\n"
 
         try:
@@ -116,7 +122,7 @@ class DependencyRiskAgent(BaseDevOpsAgent):
             return {"status": "error", "error": str(exc), "overall_risk": "unknown"}
 
     def _format_comment(self, analysis: dict[str, Any]) -> str:
-        """Format risk analysis as a GitHub comment."""
+        """Render analysis into a markdown comment body."""
         if analysis.get("status") == "no_changes":
             return "<!-- dependency-risk -->\n**No dependency files changed in this PR.**"
 
@@ -169,7 +175,7 @@ class DependencyRiskAgent(BaseDevOpsAgent):
         return "\n".join(lines)
 
     def _upsert_comment(self, pr: Any, comment_body: str) -> None:
-        """Post or update a single dependency risk comment on the PR."""
+        """Create or update the marker-based dependency risk comment."""
         marker = "<!-- dependency-risk -->"
         existing = None
         for comment in pr.get_issue_comments():
@@ -182,14 +188,14 @@ class DependencyRiskAgent(BaseDevOpsAgent):
             pr.create_issue_comment(comment_body)
 
     def run(self) -> dict[str, Any]:
-        """Execute the dependency risk analysis workflow."""
+        """Execute end-to-end dependency risk analysis for the configured PR."""
         repo = self.github_client.get_repo(self.config.repo_name)
         pr = repo.get_pull(self.config.pull_request_number)
 
         files = pr.get_files()
-        dependency_changes = self._extract_dependency_changes(list(files))
+        dependency_diffs = self._collect_dependency_diffs(list(files))
 
-        analysis = self._analyze_risks(dependency_changes)
+        analysis = self._analyze_risks(dependency_diffs)
         comment_body = self._format_comment(analysis)
         self._upsert_comment(pr, comment_body)
 
@@ -197,5 +203,5 @@ class DependencyRiskAgent(BaseDevOpsAgent):
             "status": "success",
             "pr_number": self.config.pull_request_number,
             "risk_level": analysis.get("overall_risk", "unknown"),
-            "files_analyzed": list(dependency_changes.keys()),
+            "files_analyzed": list(dependency_diffs.keys()),
         }

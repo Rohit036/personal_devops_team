@@ -1,27 +1,10 @@
-"""
-LangGraph-based orchestrator for the Personal DevOps AI Team.
+"""LangGraph orchestrator for repository automation tasks.
 
-The orchestrator models the agent pipeline as a directed state graph:
-
-    ┌──────────────────────────────────────────┐
-    │          Conditional entry point          │
-    │  (routes to the correct starting node     │
-    │   based on ``state["task"]``)             │
-    └──┬──────────────┬──────────────┬──────────┘
-       │              │              │
-       ▼              ▼              ▼
-  code_review   backlog_refine  build_prediction
-       │              │              │
-       ▼              ▼              ▼
-    (after code review, full_pipeline continues
-     to build_prediction; otherwise goes to END)
-
-Supported tasks
----------------
-* ``"code_review"``       — run the code-review agent on a pull request.
-* ``"backlog_refinement"``— refine raw backlog items with the backlog agent.
-* ``"build_prediction"``  — predict whether a build will succeed.
-* ``"full_pipeline"``     — run code_review → build_prediction in sequence.
+Supported tasks:
+- code_review: run PR code review only
+- backlog_refinement: transform raw backlog items into user stories
+- build_prediction: estimate build risk from PR metadata
+- full_pipeline: run code_review and then build_prediction
 """
 
 from __future__ import annotations
@@ -32,6 +15,12 @@ from typing import Annotated, Any, Dict, List, Optional
 
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
+
+
+TASK_CODE_REVIEW = "code_review"
+TASK_BACKLOG_REFINEMENT = "backlog_refinement"
+TASK_BUILD_PREDICTION = "build_prediction"
+TASK_FULL_PIPELINE = "full_pipeline"
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +69,7 @@ class DevOpsAgentState(TypedDict):
 # ---------------------------------------------------------------------------
 
 def _run_code_review_node(state: DevOpsAgentState) -> DevOpsAgentState:
-    """Invoke the CodeReviewAgent and store its result in the shared state."""
+    """Run code review for the PR in state and append a status message."""
     from agents.code_review_agent import CodeReviewAgent, CodeReviewConfig
 
     pr_number = state.get("pr_number")
@@ -100,18 +89,18 @@ def _run_code_review_node(state: DevOpsAgentState) -> DevOpsAgentState:
         return {
             **state,
             "code_review_result": {"status": "success", "feedback": feedback},
-            "messages": [f" Code review completed: {len(feedback)} file(s) reviewed"],
+            "messages": [f"Code review completed: {len(feedback)} file(s) reviewed"],
         }
     except Exception as exc:
         return {
             **state,
             "code_review_result": {"status": "error", "error": str(exc)},
-            "messages": [f" Code review error: {exc}"],
+            "messages": [f"Code review error: {exc}"],
         }
 
 
 def _run_backlog_refinement_node(state: DevOpsAgentState) -> DevOpsAgentState:
-    """Invoke the BacklogRefinementAgent and store its result in the shared state."""
+    """Run backlog refinement for provided backlog_items and append status."""
     from agents.backlog_refinement_agent import BacklogRefinementAgent, BacklogRefinementConfig
 
     items: List[str] = state.get("backlog_items") or []
@@ -123,18 +112,18 @@ def _run_backlog_refinement_node(state: DevOpsAgentState) -> DevOpsAgentState:
         return {
             **state,
             "backlog_result": result,
-            "messages": [f" Backlog refinement completed: {count} item(s) refined"],
+            "messages": [f"Backlog refinement completed: {count} item(s) refined"],
         }
     except Exception as exc:
         return {
             **state,
             "backlog_result": {"status": "error", "error": str(exc)},
-            "messages": [f" Backlog refinement error: {exc}"],
+            "messages": [f"Backlog refinement error: {exc}"],
         }
 
 
 def _run_build_prediction_node(state: DevOpsAgentState) -> DevOpsAgentState:
-    """Invoke the BuildPredictorAgent and store its result in the shared state."""
+    """Run build risk prediction and append a status message."""
     from agents.build_predictor_agent import BuildPredictorAgent, BuildPredictorConfig
 
     try:
@@ -154,13 +143,13 @@ def _run_build_prediction_node(state: DevOpsAgentState) -> DevOpsAgentState:
         return {
             **state,
             "build_prediction": result,
-            "messages": [f" Build prediction: {result.get('status', 'unknown')}"],
+            "messages": [f"Build prediction: {result.get('status', 'unknown')}"],
         }
     except Exception as exc:
         return {
             **state,
             "build_prediction": {"status": "error", "error": str(exc)},
-            "messages": [f" Build prediction error: {exc}"],
+            "messages": [f"Build prediction error: {exc}"],
         }
 
 
@@ -169,24 +158,21 @@ def _run_build_prediction_node(state: DevOpsAgentState) -> DevOpsAgentState:
 # ---------------------------------------------------------------------------
 
 def _route_entry(state: DevOpsAgentState) -> str:
-    """
-    Conditional entry-point: select the first node to run based on
-    ``state["task"]``.
-    """
+    """Select the graph entry node from the task name."""
     task = state.get("task", "code_review")
     routing: Dict[str, str] = {
-        "code_review": "code_review",
-        "backlog_refinement": "backlog_refinement",
-        "build_prediction": "build_prediction",
-        "full_pipeline": "code_review",
+        TASK_CODE_REVIEW: TASK_CODE_REVIEW,
+        TASK_BACKLOG_REFINEMENT: TASK_BACKLOG_REFINEMENT,
+        TASK_BUILD_PREDICTION: TASK_BUILD_PREDICTION,
+        TASK_FULL_PIPELINE: TASK_CODE_REVIEW,
     }
     return routing.get(task, END)
 
 
 def _route_after_code_review(state: DevOpsAgentState) -> str:
-    """After code review, continue to build prediction only for full_pipeline."""
-    if state.get("task") == "full_pipeline":
-        return "build_prediction"
+    """After code review, continue only when task requests full pipeline."""
+    if state.get("task") == TASK_FULL_PIPELINE:
+        return TASK_BUILD_PREDICTION
     return END
 
 
@@ -195,47 +181,34 @@ def _route_after_code_review(state: DevOpsAgentState) -> str:
 # ---------------------------------------------------------------------------
 
 def build_orchestrator():
-    """
-    Compile and return the LangGraph ``CompiledGraph`` for the DevOps AI team.
-
-    Example usage::
-
-        graph = build_orchestrator()
-        result = graph.invoke({
-            "task": "code_review",
-            "repo_name": "owner/repo",
-            "pr_number": 42,
-            "messages": [],
-        })
-        print(result["code_review_result"])
-    """
+    """Build and compile the orchestrator graph used by CLI and workflows."""
     builder = StateGraph(DevOpsAgentState)
 
     # Register nodes
-    builder.add_node("code_review", _run_code_review_node)
-    builder.add_node("backlog_refinement", _run_backlog_refinement_node)
-    builder.add_node("build_prediction", _run_build_prediction_node)
+    builder.add_node(TASK_CODE_REVIEW, _run_code_review_node)
+    builder.add_node(TASK_BACKLOG_REFINEMENT, _run_backlog_refinement_node)
+    builder.add_node(TASK_BUILD_PREDICTION, _run_build_prediction_node)
 
     # Conditional entry point routes to the right starting node
     builder.set_conditional_entry_point(
         _route_entry,
         {
-            "code_review": "code_review",
-            "backlog_refinement": "backlog_refinement",
-            "build_prediction": "build_prediction",
+            TASK_CODE_REVIEW: TASK_CODE_REVIEW,
+            TASK_BACKLOG_REFINEMENT: TASK_BACKLOG_REFINEMENT,
+            TASK_BUILD_PREDICTION: TASK_BUILD_PREDICTION,
             END: END,
         },
     )
 
     # After code review: either stop or continue to build prediction
     builder.add_conditional_edges(
-        "code_review",
+        TASK_CODE_REVIEW,
         _route_after_code_review,
-        {"build_prediction": "build_prediction", END: END},
+        {TASK_BUILD_PREDICTION: TASK_BUILD_PREDICTION, END: END},
     )
 
     # Terminal nodes go straight to END
-    builder.add_edge("backlog_refinement", END)
-    builder.add_edge("build_prediction", END)
+    builder.add_edge(TASK_BACKLOG_REFINEMENT, END)
+    builder.add_edge(TASK_BUILD_PREDICTION, END)
 
     return builder.compile()

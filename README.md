@@ -1,237 +1,103 @@
-# TALKITDOIT - DevOps AI Agent Team 
+# Personal DevOps Team
 
-Welcome to the talkitdoit project! This repository contains a team of AI agents that help automate and enhance your DevOps workflow. As featured on our [YouTube Channel](youtube.com/@talkitdoit), these agents work together to handle various DevOps tasks including code review, backlog refinement, build prediction, and infrastructure management.
+Lean AI-agent demo for engineering workflows on GitHub.
 
-The agents are now orchestrated by a **LangGraph** state machine and backed by **Azure OpenAI**, making this repo a practical demo for:
-- GitHub + Azure OpenAI + LangGraph experimentation
-- Rapid delivery and developer experience patterns
-- AI agent design standards and orchestration
+This repo is intentionally focused on must-have value:
+- PR description generation
+- Dependency risk analysis
+- PR code review + build risk prediction
+- Issue-to-story backlog refinement with acceptance criteria
 
-[![YouTube Channel](https://img.shields.io/badge/YouTube-Subscribe-red)](https://www.youtube.com/@talkitdoit)
-[![GitHub Stars](https://img.shields.io/github/stars/talkitdoit/talkitdoit-ai?style=social)](https://github.com/talkitdoit/build-a-devops-team-using-ai-agents)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+All AI calls use Azure OpenAI.
 
-##  Features
+## What is included
 
--  Automated CI/CD Pipeline Generation
--  Docker Configuration Management
--  Build Success Prediction (Azure OpenAI)
--  AI-Powered Code Review (posts directly to GitHub PRs)
--  Natural Language PR Interaction
--  Real-time Build Status Monitoring
--  **Backlog Refinement Agent** — turns raw ideas into structured user stories (Azure OpenAI)
--  **LangGraph Orchestrator** — state-machine coordination of all agents
--  **Azure OpenAI** support (GPT-4o / GPT-4 Turbo)
+- PR workflow: `.github/workflows/pr_agents.yml`
+  - On PR opened: generate/update PR description
+  - On PR synchronize/reopened: run code review + build prediction
+  - On every PR event: run dependency risk analyzer and upsert one comment
 
-##  Architecture
+- Backlog workflow: `.github/workflows/backlog_agents.yml`
+  - On issue opened/reopened: refine that issue into a user story
+  - Upserts one issue comment with acceptance criteria, story points, priority, labels
 
-```
-main.py
-  └── LangGraph Orchestrator  (orchestrator/langgraph_orchestrator.py)
-        ├── code_review        → agents/code_review_agent.py      (Azure OpenAI)
-        ├── backlog_refinement → agents/backlog_refinement_agent.py (Azure OpenAI)
-        └── build_prediction   → agents/build_predictor_agent.py   (Azure OpenAI)
+- Local CLI demo: `main.py`
+  - `--mode quick`: refine sample backlog items
+  - `--mode issues`: fetch issue(s), refine, and post/update comments
 
-Standalone agents (also callable directly):
-  agents/github_actions_agent.py   — generates CI/CD workflow YAML
-  agents/dockerfile_agent.py       — generates Dockerfiles
-  agents/build_status_agent.py     — checks local Docker image status
-  agents/chat_agent.py             — general PR chat assistant
-```
+## Architecture
 
-##  Prerequisites & Assumptions
+- `agents/pr_description_agent.py`
+- `agents/dependency_risk_agent.py`
+- `agents/code_review_agent.py`
+- `agents/backlog_refinement_agent.py`
+- `agents/build_predictor_agent.py`
+- `orchestrator/langgraph_orchestrator.py`
+- `utils/azure_openai_client.py`
 
-### Required Accounts
+## Setup
 
-| Account | Purpose | Free Tier |
-|---------|---------|-----------|
-| [GitHub](https://github.com/signup) | Repo hosting + CI/CD |  unlimited public repos |
-| [Azure](https://azure.microsoft.com/free/) | Azure OpenAI (GPT-4o) |  $200 credit for new accounts |
-
-### Technical Requirements
-- Python 3.13.0 or higher
-- Docker Desktop
-- Git
-
-### Setting Up GitHub Secrets
-
-Go to **Settings → Secrets and variables → Actions** and add:
-
-```
-# Azure OpenAI
-AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
-AZURE_OPENAI_API_KEY=your_azure_openai_key
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
-AZURE_OPENAI_API_VERSION="2024-12-01-preview"
-
-# GitHub
-GH_TOKEN=your_github_personal_access_token
-```
-
-To create a GitHub Personal Access Token:
-1. Go to GitHub Settings → Developer settings → Personal access tokens
-2. Click "Generate new token (classic)"
-3. Select `repo` and `workflow` permissions
-
-##  Getting Started
-
-### Installation
-
-#### macOS
-
-```bash
-brew install python@3.13
-brew install --cask docker
-
-git clone https://github.com/Rohit036/personal_devops_team.git
-cd personal_devops_team
-
-python3.13 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-#### Windows
-
-```powershell
-# Install Python 3.13 from https://www.python.org/downloads/
-# Install Docker Desktop from https://www.docker.com/products/docker-desktop
-
-git clone https://github.com/Rohit036/personal_devops_team.git
-cd personal_devops_team
-
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-#### Linux
-
-```bash
-sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt update
-sudo apt install python3.13 python3.13-venv
-sudo apt install docker.io
-sudo systemctl start docker
-sudo usermod -aG docker $USER
-
-git clone https://github.com/Rohit036/personal_devops_team.git
-cd personal_devops_team
-
-python3.13 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Configuration
-
-Copy the example file and fill in your keys:
+1. Create `.env` from `dot_env_example`
 
 ```bash
 cp dot_env_example .env
-# Edit .env and add your API keys
 ```
 
-Required variables:
+2. Fill required variables in `.env`
 
 ```bash
-# Azure OpenAI (for all AI agents + orchestrator)
 AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
-AZURE_OPENAI_API_KEY=your_azure_openai_key
+AZURE_OPENAI_API_KEY=your_azure_openai_api_key
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
-AZURE_OPENAI_API_VERSION="2024-12-01-preview"
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
 
-# GitHub
 GITHUB_TOKEN=your_github_token
+GITHUB_REPOSITORY=owner/repo
 ```
 
-### Usage
+3. Install dependencies
 
 ```bash
-source venv/bin/activate   # macOS/Linux
-# .\venv\Scripts\activate  # Windows
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-# Quick mode (recommended first run; no Docker build required)
+## Local demo commands
+
+Quick backlog refinement:
+
+```bash
 python main.py --mode quick
-
-# Full mode (runs CI/Docker generation + docker build + predictor + orchestrator)
-python main.py --mode full
 ```
 
-### Using the LangGraph Orchestrator directly
+Refine open issues from a repo:
 
-```python
-from orchestrator.langgraph_orchestrator import build_orchestrator
-
-graph = build_orchestrator()
-
-# Refine backlog items
-result = graph.invoke({
-    "task": "backlog_refinement",
-    "repo_name": "owner/repo",
-    "pr_number": None,
-    "backlog_items": [
-        "Add OAuth2 login",
-        "Fix memory leak in worker service",
-        "Build deployment dashboard",
-    ],
-    "messages": [],
-    "code_review_result": None,
-    "backlog_result": None,
-    "build_prediction": None,
-    "build_status": None,
-    "error": None,
-})
-
-for item in result["backlog_result"]["refined"]:
-    print(item["user_story"])
-    print("  Acceptance criteria:", item["acceptance_criteria"])
-    print("  Story points:", item["story_points"])
-
-# Code review on a PR
-result = graph.invoke({
-    "task": "code_review",
-    "repo_name": "owner/repo",
-    "pr_number": 42,
-    "backlog_items": None,
-    "messages": [],
-    "code_review_result": None,
-    "backlog_result": None,
-    "build_prediction": None,
-    "build_status": None,
-    "error": None,
-})
+```bash
+python main.py --mode issues --repo owner/repo --max-issues 5
 ```
 
-### Project Structure
+Refine one specific issue (used by issue workflow):
 
-```
-personal_devops_team/
-├── agents/
-│   ├── base_agent.py              # Base class for all agents
-│   ├── backlog_refinement_agent.py # NEW – Azure OpenAI backlog agent
-│   ├── code_review_agent.py        # PR code review (Azure OpenAI)
-│   ├── chat_agent.py               # PR chat assistant (Azure OpenAI)
-│   ├── build_predictor_agent.py    # Build failure prediction (Azure OpenAI)
-│   ├── build_status_agent.py       # Docker image status check
-│   ├── dockerfile_agent.py         # Dockerfile generator
-│   └── github_actions_agent.py     # CI/CD workflow generator
-├── orchestrator/
-│   └── langgraph_orchestrator.py   # NEW – LangGraph state machine
-├── utils/
-│   ├── azure_openai_client.py      # NEW – Azure OpenAI wrapper
-├── html/                           # Web interface files
-├── .github/workflows/
-│   └── ai_agents.yml               # GitHub Actions pipeline
-├── main.py                         # Main orchestration script
-├── requirements.txt                # Python dependencies
-└── dot_env_example                 # Example environment config
+```bash
+python main.py --mode issues --repo owner/repo --issue-number 123 --max-issues 1
 ```
 
-##  Contributing
+## GitHub Actions demo
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-agent`)
-3. Commit your changes (`git commit -m 'Add new agent'`)
-4. Push to the branch (`git push origin feature/my-agent`)
-5. Open a Pull Request — the AI agents will review it automatically!
+1. Push a PR that changes code and optionally dependency files
+2. Open PR and watch `PR Agents Pipeline`
+3. You should see:
+   - PR description generated/updated
+   - Dependency risk comment upserted
+   - On subsequent pushes: code review + build prediction updates
+
+For backlog demo:
+1. Open an issue
+2. Watch `Backlog Agents Pipeline`
+3. A refined story comment is added/updated on that issue
+
+## Notes
+
+- The repository is optimized for demo clarity over feature breadth.
+- Legacy Docker/static-site scaffolding was intentionally removed.
