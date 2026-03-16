@@ -143,31 +143,79 @@ def _run_github_issues_demo(repo_name: str, max_issues: int = 5):
         repo = gh.get_repo(repo_name)
         open_issues = repo.get_issues(state="open")
 
-        issue_titles: list[str] = []
-        issue_refs: list[str] = []
+        issue_backlog_items: list[str] = []
+        issue_objects = []  # keep Issue objects for comment posting
         for issue in open_issues:
             # GitHub API returns PRs in the issues list; skip those for backlog demo.
             if issue.pull_request is not None:
                 continue
-            issue_titles.append(issue.title)
-            issue_refs.append(f"#{issue.number}")
-            if len(issue_titles) >= max_issues:
+            issue_backlog_items.append(_issue_to_backlog_item(issue.title, issue.body, issue.labels))
+            issue_objects.append(issue)
+            if len(issue_backlog_items) >= max_issues:
                 break
 
-        if not issue_titles:
+        if not issue_backlog_items:
             print(f"  ⚠️  No open issues found in {repo_name}.")
             return
 
+        issue_refs = [f"#{i.number}" for i in issue_objects]
         print(
-            f"  📥 Loaded {len(issue_titles)} open issue(s) from {repo_name}: "
+            f"  📥 Loaded {len(issue_backlog_items)} open issue(s) from {repo_name}: "
             f"{', '.join(issue_refs)}"
         )
-        _refine_backlog_items(repo_name, issue_titles)
+        refined = _refine_backlog_items(repo_name, issue_backlog_items)
+
+        # Post the refined story back to each source GitHub issue as a comment.
+        if refined:
+            print("\n  💬 Posting refined stories back to GitHub issues...")
+            for issue, refined_item in zip(issue_objects, refined):
+                comment_body = _format_comment(refined_item)
+                issue.create_comment(comment_body)
+                print(f"     ✅ Posted comment on #{issue.number}")
     except Exception as exc:
         print(f"  ❌ Failed to fetch issues from GitHub: {exc}")
 
 
-def _refine_backlog_items(repo_name: str, backlog_items: list[str]):
+def _format_comment(refined: dict) -> str:
+    """Build a Markdown comment body to post on a GitHub issue."""
+    user_story = refined.get("user_story") or refined.get("original", "")
+    story_points = refined.get("story_points", "?")
+    priority = refined.get("priority", "?")
+    acceptance = refined.get("acceptance_criteria") or []
+    labels = refined.get("labels") or []
+
+    lines = [
+        "## 🤖 AI-Refined User Story",
+        "",
+        f"**User Story:** {user_story}",
+        "",
+        f"**Story Points:** {story_points}  |  **Priority:** {priority.capitalize()}",
+    ]
+    if labels:
+        lines += ["", f"**Labels:** {', '.join(labels)}"]
+    if acceptance:
+        lines += ["", "**Acceptance Criteria:**"]
+        for criterion in acceptance:
+            lines.append(f"- {criterion}")
+    lines += ["", "---", "_Generated automatically by the Personal DevOps Team AI Agent._"]
+    return "\n".join(lines)
+
+
+def _issue_to_backlog_item(title: str, body: str | None, labels) -> str:
+    # Keep payload concise while preserving enough context for better refinement.
+    compact_body = (body or "").strip().replace("\r\n", "\n")
+    compact_body = " ".join(compact_body.split())
+    if len(compact_body) > 500:
+        compact_body = compact_body[:500] + "..."
+
+    label_names = [label.name for label in labels] if labels else []
+    labels_text = ", ".join(label_names) if label_names else "none"
+
+    return f"Title: {title}\nDetails: {compact_body or 'No details provided'}\nLabels: {labels_text}"
+
+
+def _refine_backlog_items(repo_name: str, backlog_items: list[str]) -> list[dict]:
+    """Invoke the orchestrator for backlog refinement and print results. Returns the refined items."""
     graph = build_orchestrator()
     result = graph.invoke({
         "task": "backlog_refinement",
@@ -187,12 +235,23 @@ def _refine_backlog_items(repo_name: str, backlog_items: list[str]):
 
     backlog_result = result.get("backlog_result", {})
     if backlog_result.get("status") == "success":
-        for item in backlog_result.get("refined", []):
+        refined = backlog_result.get("refined", [])
+        for item in refined:
             print(f"\n  📌 {item.get('user_story', item.get('original', ''))}")
             print(f"     Points: {item.get('story_points')}  Priority: {item.get('priority')}")
+            acceptance = item.get("acceptance_criteria") or []
+            if acceptance:
+                print("     Acceptance Criteria:")
+                for criterion in acceptance:
+                    print(f"       - {criterion}")
+            labels = item.get("labels") or []
+            if labels:
+                print(f"     Labels: {', '.join(labels)}")
+        return refined
     else:
         print(f"  ⚠️  Backlog refinement skipped (Azure OpenAI not configured): "
               f"{backlog_result.get('error', 'unknown error')}")
+        return []
 
 
 if __name__ == "__main__":
