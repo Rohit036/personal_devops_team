@@ -38,10 +38,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: Install agent runtime dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install pydantic python-dotenv PyGithub openai langchain-core langchain-openai langgraph
 
       - name: Run PR Description Agent
         if: github.event.action == 'opened'
@@ -76,7 +76,7 @@ jobs:
             azure_openai_api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '2024-12-01-preview'),
             github_token=os.environ['GITHUB_TOKEN'],
             repo_name='${{ github.repository }}',
-            pull_request_number=\${{ github.event.pull_request.number }}
+            pull_request_number=${{ github.event.pull_request.number }}
           ))
           result = agent.run()
           print(f'Dependency risk assessed: {result[\"risk_level\"]} for PR #{result[\"pr_number\"]}')
