@@ -113,13 +113,13 @@ class PRDescriptionAgent(BaseDevOpsAgent):
 
     def _format_pr_body(self, data: dict) -> str:
         change_type_emoji = {
-            "feature": "✨ Feature",
-            "bug_fix": "🐛 Bug Fix",
-            "refactor": "♻️ Refactor",
-            "docs": "📝 Docs",
-            "chore": "🔧 Chore",
+            "feature": " Feature",
+            "bug_fix": " Bug Fix",
+            "refactor": " Refactor",
+            "docs": " Docs",
+            "chore": " Chore",
         }
-        change_label = change_type_emoji.get(data.get("change_type", ""), "🔧 Change")
+        change_label = change_type_emoji.get(data.get("change_type", ""), " Change")
 
         changes_md = "\n".join(f"- {c}" for c in data.get("changes", []))
         test_steps_md = "\n".join(f"{i+1}. {s}" for i, s in enumerate(data.get("how_to_test", [])))
@@ -173,7 +173,7 @@ class PRDescriptionAgent(BaseDevOpsAgent):
         else:
             # Developer already wrote a description — post as a suggestion comment.
             comment_body = (
-                "## 🤖 Suggested PR Description\n\n"
+                "##  Suggested PR Description\n\n"
                 "The AI DevOps agent generated this description based on your diff. "
                 "Copy it into the PR description if it looks useful.\n\n"
                 "---\n\n"

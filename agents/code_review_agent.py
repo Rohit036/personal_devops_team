@@ -146,7 +146,7 @@ class CodeReviewAgent(BaseDevOpsAgent):
         repo = self.github_client.get_repo(self.config.repo_name)
         pull_request = repo.get_pull(self.config.pull_request_number)
         marker = "<!-- ai-code-review -->"
-        sections = [marker, "## 🧠 AI Code Review Summary", ""]
+        sections = [marker, "##  AI Code Review Summary", ""]
 
         if not feedback:
             sections.append("No Python files were changed in this PR.")
@@ -154,7 +154,7 @@ class CodeReviewAgent(BaseDevOpsAgent):
             for file_feedback in feedback:
                 sections.append(f"### File: {file_feedback['file']}")
                 if "error" in file_feedback:
-                    sections.append(f"- ⚠️ Error: {file_feedback['error']}")
+                    sections.append(f"-  Error: {file_feedback['error']}")
                     sections.append("")
                     continue
 

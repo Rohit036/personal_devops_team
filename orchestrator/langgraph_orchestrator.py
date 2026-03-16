@@ -100,13 +100,13 @@ def _run_code_review_node(state: DevOpsAgentState) -> DevOpsAgentState:
         return {
             **state,
             "code_review_result": {"status": "success", "feedback": feedback},
-            "messages": [f"✅ Code review completed: {len(feedback)} file(s) reviewed"],
+            "messages": [f" Code review completed: {len(feedback)} file(s) reviewed"],
         }
     except Exception as exc:
         return {
             **state,
             "code_review_result": {"status": "error", "error": str(exc)},
-            "messages": [f"❌ Code review error: {exc}"],
+            "messages": [f" Code review error: {exc}"],
         }
 
 
@@ -123,13 +123,13 @@ def _run_backlog_refinement_node(state: DevOpsAgentState) -> DevOpsAgentState:
         return {
             **state,
             "backlog_result": result,
-            "messages": [f"✅ Backlog refinement completed: {count} item(s) refined"],
+            "messages": [f" Backlog refinement completed: {count} item(s) refined"],
         }
     except Exception as exc:
         return {
             **state,
             "backlog_result": {"status": "error", "error": str(exc)},
-            "messages": [f"❌ Backlog refinement error: {exc}"],
+            "messages": [f" Backlog refinement error: {exc}"],
         }
 
 
@@ -154,13 +154,13 @@ def _run_build_prediction_node(state: DevOpsAgentState) -> DevOpsAgentState:
         return {
             **state,
             "build_prediction": result,
-            "messages": [f"✅ Build prediction: {result.get('status', 'unknown')}"],
+            "messages": [f" Build prediction: {result.get('status', 'unknown')}"],
         }
     except Exception as exc:
         return {
             **state,
             "build_prediction": {"status": "error", "error": str(exc)},
-            "messages": [f"❌ Build prediction error: {exc}"],
+            "messages": [f" Build prediction error: {exc}"],
         }
 
 

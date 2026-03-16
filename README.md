@@ -1,4 +1,4 @@
-# TALKITDOIT - DevOps AI Agent Team 🤖
+# TALKITDOIT - DevOps AI Agent Team 
 
 Welcome to the talkitdoit project! This repository contains a team of AI agents that help automate and enhance your DevOps workflow. As featured on our [YouTube Channel](youtube.com/@talkitdoit), these agents work together to handle various DevOps tasks including code review, backlog refinement, build prediction, and infrastructure management.
 
@@ -11,19 +11,19 @@ The agents are now orchestrated by a **LangGraph** state machine and backed by *
 [![GitHub Stars](https://img.shields.io/github/stars/talkitdoit/talkitdoit-ai?style=social)](https://github.com/talkitdoit/build-a-devops-team-using-ai-agents)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 🌟 Features
+##  Features
 
-- 🔄 Automated CI/CD Pipeline Generation
-- 🐳 Docker Configuration Management
-- 📊 Build Success Prediction (Azure OpenAI)
-- 🔍 AI-Powered Code Review (posts directly to GitHub PRs)
-- 💬 Natural Language PR Interaction
-- 📈 Real-time Build Status Monitoring
-- 📋 **Backlog Refinement Agent** — turns raw ideas into structured user stories (Azure OpenAI)
-- 🧠 **LangGraph Orchestrator** — state-machine coordination of all agents
-- ☁️ **Azure OpenAI** support (GPT-4o / GPT-4 Turbo)
+-  Automated CI/CD Pipeline Generation
+-  Docker Configuration Management
+-  Build Success Prediction (Azure OpenAI)
+-  AI-Powered Code Review (posts directly to GitHub PRs)
+-  Natural Language PR Interaction
+-  Real-time Build Status Monitoring
+-  **Backlog Refinement Agent** — turns raw ideas into structured user stories (Azure OpenAI)
+-  **LangGraph Orchestrator** — state-machine coordination of all agents
+-  **Azure OpenAI** support (GPT-4o / GPT-4 Turbo)
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 main.py
@@ -39,14 +39,14 @@ Standalone agents (also callable directly):
   agents/chat_agent.py             — general PR chat assistant
 ```
 
-## 🚀 Prerequisites & Assumptions
+##  Prerequisites & Assumptions
 
 ### Required Accounts
 
 | Account | Purpose | Free Tier |
 |---------|---------|-----------|
-| [GitHub](https://github.com/signup) | Repo hosting + CI/CD | ✅ unlimited public repos |
-| [Azure](https://azure.microsoft.com/free/) | Azure OpenAI (GPT-4o) | ✅ $200 credit for new accounts |
+| [GitHub](https://github.com/signup) | Repo hosting + CI/CD |  unlimited public repos |
+| [Azure](https://azure.microsoft.com/free/) | Azure OpenAI (GPT-4o) |  $200 credit for new accounts |
 
 ### Technical Requirements
 - Python 3.13.0 or higher
@@ -73,7 +73,7 @@ To create a GitHub Personal Access Token:
 2. Click "Generate new token (classic)"
 3. Select `repo` and `workflow` permissions
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Installation
 
@@ -228,7 +228,7 @@ personal_devops_team/
 └── dot_env_example                 # Example environment config
 ```
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-agent`)
