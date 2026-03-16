@@ -63,6 +63,25 @@ jobs:
           print(f'PR description {result[\"action\"]} for PR #{result[\"pr_number\"]}')
           "
 
+      - name: Run Dependency Risk Analyzer
+        run: |
+          python -c "
+          from agents.dependency_risk_agent import DependencyRiskAgent, DependencyRiskConfig
+          import os
+
+          agent = DependencyRiskAgent(DependencyRiskConfig(
+            azure_openai_endpoint=os.environ.get('AZURE_OPENAI_ENDPOINT', ''),
+            azure_openai_key=os.environ.get('AZURE_OPENAI_API_KEY', ''),
+            azure_openai_deployment=os.environ.get('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o'),
+            azure_openai_api_version=os.environ.get('AZURE_OPENAI_API_VERSION', '2024-12-01-preview'),
+            github_token=os.environ['GITHUB_TOKEN'],
+            repo_name='${{ github.repository }}',
+            pull_request_number=\${{ github.event.pull_request.number }}
+          ))
+          result = agent.run()
+          print(f'Dependency risk assessed: {result[\"risk_level\"]} for PR #{result[\"pr_number\"]}')
+          "
+
       - name: Run Review + Build Prediction (LangGraph)
         if: github.event.action != 'opened'
         run: |
