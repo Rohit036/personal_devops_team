@@ -104,25 +104,25 @@ jobs:
     - name: Test Docker Container
       run: |
         if docker ps | grep -q myapp; then
-          echo "🔍 Testing Docker container endpoints..."
+          echo " Testing Docker container endpoints..."
           
           if curl -I http://localhost/talkitdoit.html | grep -q "200 OK"; then
-            echo "✅ talkitdoit.html test passed! 🚀"
+            echo " talkitdoit.html test passed! "
           else
-            echo "❌ talkitdoit.html test failed 😢"
+            echo " talkitdoit.html test failed "
             exit 1
           fi
           
           if curl -I http://localhost/index.html | grep -q "200 OK"; then
-            echo "✅ index.html test passed! 🎯"
+            echo " index.html test passed! "
           else
-            echo "❌ index.html test failed 😢"
+            echo " index.html test failed "
             exit 1
           fi
           
-          echo "🎉 All Docker container tests passed successfully! 🌟"
+          echo " All Docker container tests passed successfully! "
         else
-          echo "⚠️ Docker container not running, skipping tests 🤔"
+          echo " Docker container not running, skipping tests "
           exit 1
         fi
         """

@@ -115,7 +115,7 @@ class ChatAgent(BaseDevOpsAgent):
         """
         repo = self.github_client.get_repo(self.config.repo_name)
         pull_request = repo.get_pull(self.config.pull_request_number)
-        comment = f"🤖 **AI Assistant:** {bot_response}"
+        comment = f" **AI Assistant:** {bot_response}"
         pull_request.create_issue_comment(comment)
 
     def run(self):

@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from typing import Any
 
 from pydantic import BaseModel
@@ -119,21 +118,20 @@ class DependencyRiskAgent(BaseDevOpsAgent):
     def _format_comment(self, analysis: dict[str, Any]) -> str:
         """Format risk analysis as a GitHub comment."""
         if analysis.get("status") == "no_changes":
-            return "<!-- dependency-risk -->\n**✅ No dependency files changed in this PR.**"
+            return "<!-- dependency-risk -->\n**No dependency files changed in this PR.**"
 
         if analysis.get("status") == "error":
             return (
                 f"<!-- dependency-risk -->\n"
-                f"⚠️ **Dependency Risk Check Failed:**\n"
+                f"**Dependency Risk Check Failed:**\n"
                 f"{analysis.get('error', 'Unknown error')}"
             )
 
         risk = analysis.get("overall_risk", "unknown").upper()
-        risk_emoji = {"LOW": "✅", "MEDIUM": "⚠️", "HIGH": "🚨"}[risk] if risk in risk_emoji else "❓"
 
         lines = [
             "<!-- dependency-risk -->",
-            f"## {risk_emoji} Dependency Risk Assessment: {risk}",
+            f"## Dependency Risk Assessment: {risk}",
             "",
             f"**Summary:** {analysis.get('summary', 'Analysis unavailable')}",
             "",
