@@ -38,10 +38,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install agent runtime dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pydantic python-dotenv PyGithub openai langchain-core langchain-openai langgraph
+          pip install -r requirements.txt
 
       - name: Run PR Description Agent
         if: github.event.action == 'opened'

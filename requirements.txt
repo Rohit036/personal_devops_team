@@ -1,11 +1,6 @@
 pydantic
-pytest
-pytest-cov
-requests
 python-dotenv
 PyGithub
-pydantic-ai
-# Azure OpenAI + LangGraph orchestration
 openai
 langchain-core
 langchain-openai
