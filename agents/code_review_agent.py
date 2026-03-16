@@ -145,25 +145,56 @@ class CodeReviewAgent(BaseDevOpsAgent):
         """
         repo = self.github_client.get_repo(self.config.repo_name)
         pull_request = repo.get_pull(self.config.pull_request_number)
+        marker = "<!-- ai-code-review -->"
+        sections = [marker, "## 🧠 AI Code Review Summary", ""]
 
-        for file_feedback in feedback:
-            if "error" in file_feedback:
-                # Handle error cases with warning message
-                comment = f"⚠️ **Code Review Error**: {file_feedback['error']}"
-            else:
-                # Format successful review feedback
-                issues = "\n".join([f"- {issue['description']}" for issue in file_feedback['issues']])
-                suggestions = "\n".join([f"- {suggestion}" for suggestion in file_feedback['suggestions']])
-                overall = file_feedback['overall_quality']
+        if not feedback:
+            sections.append("No Python files were changed in this PR.")
+        else:
+            for file_feedback in feedback:
+                sections.append(f"### File: {file_feedback['file']}")
+                if "error" in file_feedback:
+                    sections.append(f"- ⚠️ Error: {file_feedback['error']}")
+                    sections.append("")
+                    continue
 
-                comment = (
-                    f"### 📝 Code Review for `{file_feedback['file']}`\n\n"
-                    f"**Overall Quality**: {overall}\n\n"
-                    f"**Issues Found**:\n{issues}\n\n"
-                    f"**Suggestions**:\n{suggestions}"
-                )
-            # Post the comment on the pull request
-            pull_request.create_issue_comment(comment)
+                overall = file_feedback.get("overall_quality", "unknown")
+                sections.append(f"- Overall Quality: {overall}")
+
+                issues = file_feedback.get("issues", [])
+                if issues:
+                    sections.append("- Issues Found:")
+                    for issue in issues:
+                        description = issue.get("description", "Unspecified issue")
+                        severity = issue.get("severity", "unspecified")
+                        sections.append(f"  - [{severity}] {description}")
+                else:
+                    sections.append("- Issues Found: none")
+
+                suggestions = file_feedback.get("suggestions", [])
+                if suggestions:
+                    sections.append("- Suggestions:")
+                    for suggestion in suggestions:
+                        sections.append(f"  - {suggestion}")
+                else:
+                    sections.append("- Suggestions: none")
+
+                sections.append("")
+
+        sections.append("---")
+        sections.append("_This comment is automatically updated on each run._")
+        comment_body = "\n".join(sections)
+
+        existing_comment = None
+        for comment in pull_request.get_issue_comments():
+            if marker in (comment.body or ""):
+                existing_comment = comment
+                break
+
+        if existing_comment:
+            existing_comment.edit(comment_body)
+        else:
+            pull_request.create_issue_comment(comment_body)
 
     def run(self):
         """

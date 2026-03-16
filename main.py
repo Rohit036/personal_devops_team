@@ -1,17 +1,24 @@
-from agents.github_actions_agent import GitHubActionsAgent, GitHubActionsConfig
-from agents.dockerfile_agent import DockerfileAgent, DockerfileConfig
-from agents.build_predictor_agent import BuildPredictorAgent, BuildPredictorConfig
-from agents.build_status_agent import BuildStatusAgent, BuildStatusConfig
-from orchestrator.langgraph_orchestrator import build_orchestrator
 import argparse
 import os
+from typing import Any
+
+from agents.build_predictor_agent import BuildPredictorAgent, BuildPredictorConfig
+from agents.build_status_agent import BuildStatusAgent, BuildStatusConfig
+from agents.dockerfile_agent import DockerfileAgent, DockerfileConfig
+from agents.github_actions_agent import GitHubActionsAgent, GitHubActionsConfig
+from orchestrator.langgraph_orchestrator import build_orchestrator
 from dotenv import load_dotenv
 from github import Auth, Github
 
 # Load environment variables from .env file
 load_dotenv()
 
-def main(mode: str = "full", repo_name: str | None = None, max_issues: int = 5):
+def main(
+    mode: str = "full",
+    repo_name: str | None = None,
+    max_issues: int = 5,
+    issue_number: int | None = None,
+):
     """
     Main orchestration function that coordinates the DevOps AI team's activities.
     
@@ -34,7 +41,11 @@ def main(mode: str = "full", repo_name: str | None = None, max_issues: int = 5):
 
     if mode == "issues":
         print("\n🧾 Issues mode: reading open GitHub issues and refining them as stories")
-        _run_github_issues_demo(resolved_repo_name, max_issues=max_issues)
+        _run_github_issues_demo(
+            resolved_repo_name,
+            max_issues=max_issues,
+            issue_number=issue_number,
+        )
         print("\n✨ Issues demo completed!")
         return
 
@@ -132,7 +143,11 @@ def _run_orchestrator_demo(repo_name: str):
     _refine_backlog_items(repo_name, sample_items)
 
 
-def _run_github_issues_demo(repo_name: str, max_issues: int = 5):
+def _run_github_issues_demo(
+    repo_name: str,
+    max_issues: int = 5,
+    issue_number: int | None = None,
+):
     token = os.getenv("GITHUB_TOKEN", "")
     if not token:
         print("  ⚠️  GITHUB_TOKEN is missing; cannot read issues from GitHub.")
@@ -141,18 +156,26 @@ def _run_github_issues_demo(repo_name: str, max_issues: int = 5):
     try:
         gh = Github(auth=Auth.Token(token))
         repo = gh.get_repo(repo_name)
-        open_issues = repo.get_issues(state="open")
-
         issue_backlog_items: list[str] = []
         issue_objects = []  # keep Issue objects for comment posting
-        for issue in open_issues:
-            # GitHub API returns PRs in the issues list; skip those for backlog demo.
+
+        if issue_number is not None:
+            issue = repo.get_issue(number=issue_number)
             if issue.pull_request is not None:
-                continue
+                print(f"  ⚠️  #{issue.number} is a pull request, not a backlog issue. Skipping.")
+                return
             issue_backlog_items.append(_issue_to_backlog_item(issue.title, issue.body, issue.labels))
             issue_objects.append(issue)
-            if len(issue_backlog_items) >= max_issues:
-                break
+        else:
+            open_issues = repo.get_issues(state="open")
+            for issue in open_issues:
+                # GitHub API returns PRs in the issues list; skip those for backlog demo.
+                if issue.pull_request is not None:
+                    continue
+                issue_backlog_items.append(_issue_to_backlog_item(issue.title, issue.body, issue.labels))
+                issue_objects.append(issue)
+                if len(issue_backlog_items) >= max_issues:
+                    break
 
         if not issue_backlog_items:
             print(f"  ⚠️  No open issues found in {repo_name}.")
@@ -169,8 +192,7 @@ def _run_github_issues_demo(repo_name: str, max_issues: int = 5):
         if refined:
             print("\n  💬 Posting refined stories back to GitHub issues...")
             for issue, refined_item in zip(issue_objects, refined):
-                comment_body = _format_comment(refined_item)
-                issue.create_comment(comment_body)
+                _upsert_issue_story_comment(issue, refined_item)
                 print(f"     ✅ Posted comment on #{issue.number}")
     except Exception as exc:
         print(f"  ❌ Failed to fetch issues from GitHub: {exc}")
@@ -199,6 +221,20 @@ def _format_comment(refined: dict) -> str:
             lines.append(f"- {criterion}")
     lines += ["", "---", "_Generated automatically by the Personal DevOps Team AI Agent._"]
     return "\n".join(lines)
+
+
+def _upsert_issue_story_comment(issue: Any, refined: dict) -> None:
+    marker = "<!-- ai-backlog-refinement -->"
+    comment_body = f"{marker}\n{_format_comment(refined)}"
+    existing_comment = None
+    for comment in issue.get_comments():
+        if marker in (comment.body or ""):
+            existing_comment = comment
+            break
+    if existing_comment:
+        existing_comment.edit(comment_body)
+    else:
+        issue.create_comment(comment_body)
 
 
 def _issue_to_backlog_item(title: str, body: str | None, labels) -> str:
@@ -273,5 +309,16 @@ if __name__ == "__main__":
         default=5,
         help="Maximum number of open issues to fetch for issues mode",
     )
+    parser.add_argument(
+        "--issue-number",
+        type=int,
+        default=None,
+        help="Process only one specific issue number in issues mode",
+    )
     args = parser.parse_args()
-    main(mode=args.mode, repo_name=args.repo, max_issues=args.max_issues)
+    main(
+        mode=args.mode,
+        repo_name=args.repo,
+        max_issues=args.max_issues,
+        issue_number=args.issue_number,
+    )
