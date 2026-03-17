@@ -1,0 +1,11 @@
+azure-identity==1.5.0
+
+pydantic==1.10.2
+
+langchain-core==0.0.1
+
+langchain-openai==0.0.1
+
+pyjwt==1.4.0
+
+requests==2.27.0
