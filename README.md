@@ -63,6 +63,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## LangGraph basic example
+
+A minimal, self-contained LangGraph example is available in `examples/langgraph_basic.py`:
+
+```bash
+python examples/langgraph_basic.py
+```
+
+It builds a tiny two-node graph (`greet` → `ask`) that appends messages to a shared state.
+
 ## Local demo commands
 
 Quick backlog refinement:
